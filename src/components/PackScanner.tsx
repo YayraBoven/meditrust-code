@@ -3,7 +3,7 @@ import { Camera, ChevronRight, Database, ImageUp, Keyboard, Lightbulb, Pill, Rot
 import { useEffect, useRef, useState } from 'react';
 import { ingredientNames } from '../data/medicines';
 import type { Medicine } from '../data/types';
-import { candidateWords, findMedicinesInText, preloadOcr, readPackText, unknownBrandPhrases } from '../engine/ocr';
+import { candidateWords, findMedicinesInText, preloadOcr, readPackText, spottedTerms, unknownBrandPhrases, type Crop } from '../engine/ocr';
 import { searchRxNorm } from '../engine/rxnorm';
 import { Press } from './ui';
 
@@ -13,6 +13,31 @@ interface Found {
   local: Medicine[];
   remote: Medicine[];
   text: string;
+  words: number;
+}
+
+/**
+ * The part of the camera frame inside the on-screen guide box (plus a margin),
+ * allowing for the video being scaled to cover its container.
+ */
+function guideCrop(v: HTMLVideoElement): Crop | undefined {
+  const W = v.clientWidth;
+  const H = v.clientHeight;
+  const vw = v.videoWidth;
+  const vh = v.videoHeight;
+  if (!W || !H || !vw || !vh) return undefined;
+  const s = Math.max(W / vw, H / vh);
+  const ox = (vw * s - W) / 2;
+  const oy = (vh * s - H) / 2;
+  const pad = 0.06;
+  const gx = 24 - W * pad;
+  const gy = H * 0.29 - H * pad;
+  const gw = W - 48 + 2 * W * pad;
+  const gh = H * 0.42 + 2 * H * pad;
+  const clamp = (n: number) => Math.min(1, Math.max(0, n));
+  const x = clamp((gx + ox) / s / vw);
+  const y = clamp((gy + oy) / s / vh);
+  return { x, y, w: clamp((gw / s) / vw + x) - x, h: clamp((gh / s) / vh + y) - y };
 }
 
 export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void; onType: () => void }) {
@@ -60,12 +85,12 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
     }
   };
 
-  const read = async (source: Blob | HTMLCanvasElement, preview: string) => {
+  const read = async (source: Blob | HTMLCanvasElement, preview: string, crop?: Crop) => {
     setPhoto(preview);
     setStage('reading');
     setProgress(0);
     try {
-      const { text } = await readPackText(source, setProgress);
+      const { text, words } = await readPackText(source, setProgress, crop);
       const local = findMedicinesInText(text, 3).map((m) => m.medicine);
       // Brand names we do not know are looked up in the wider database, even when
       // something matched locally (e.g. "Panadol Extra" on a paracetamol pack).
@@ -82,7 +107,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
       }
       const localSets = new Set(local.map((m) => [...m.ingredients].sort().join('|')));
       remote = remote.filter((m) => !localSets.has([...m.ingredients].sort().join('|')) || m.brand.toLowerCase() !== m.generic.toLowerCase());
-      setFound({ local, remote, text });
+      setFound({ local, remote, text, words });
       setStage('results');
     } catch {
       setError('The text reader could not start. Check your connection the first time you use it, then try again.');
@@ -98,8 +123,9 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
     c.height = v.videoHeight;
     c.getContext('2d')!.drawImage(v, 0, 0);
     const preview = c.toDataURL('image/jpeg', 0.7);
+    const crop = guideCrop(v);
     stopCamera();
-    void read(c, preview);
+    void read(c, preview, crop);
   };
 
   const onFile = (f: File | undefined) => {
@@ -114,8 +140,9 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
     setStage('start');
   };
 
-  const snippet = found?.text.replace(/\s+/g, ' ').trim().slice(0, 110);
+  const spotted = found ? spottedTerms(found.text) : [];
   const nothing = found && !found.local.length && !found.remote.length;
+  const unreadable = !!found && nothing && found.words < 3;
 
   return (
     <div className="mt-4">
@@ -205,15 +232,25 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
             <div className="flex gap-3 rounded-2xl bg-card p-3 shadow-card">
               {photo && <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />}
               <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">We read</div>
-                <div className="line-clamp-3 text-[12.5px] leading-snug text-navy-900">{snippet || 'No clear text found'}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">We spotted</div>
+                {spotted.length ? (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {spotted.map((t) => (
+                      <span key={t} className="rounded-full bg-teal-100 px-2.5 py-0.5 text-[12px] font-semibold text-teal-800">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-[12.5px] leading-snug text-navy-900">{nothing ? 'No medicine name we could recognise' : 'A medicine name (see below)'}</div>
+                )}
               </div>
             </div>
 
             {nothing ? (
               <div className="mt-5 text-center">
-                <div className="text-[16px] font-bold text-navy-900">We could not find a medicine name</div>
-                <p className="mx-auto mt-1 max-w-[280px] text-[13px] text-muted">Try again with better light and the name filling the frame, or type the name instead.</p>
+                <div className="text-[16px] font-bold text-navy-900">{unreadable ? 'The photo was hard to read' : 'We could not find a medicine name'}</div>
+                <p className="mx-auto mt-1 max-w-[290px] text-[13px] text-muted">Hold the pack flat, avoid shine from lights, and fill the box with the medicine name. Or type the name instead.</p>
               </div>
             ) : (
               <>
