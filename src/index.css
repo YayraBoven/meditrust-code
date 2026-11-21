@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible { @apply outline-none ring-2 ring-teal-500 ring-offset-2 ring-offset-canvas; }
+}
+
+@layer components {
+  .card { @apply bg-card rounded-xl2 border border-line shadow-card; }
+  .btn-primary {
+    @apply inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-4 text-[15px] font-bold text-white
+           shadow-[0_8px_20px_rgba(14,147,132,0.28)] transition-colors hover:bg-teal-700 active:bg-teal-800 disabled:cursor-not-allowed disabled:bg-teal-200 disabled:shadow-none;
+  }
+  .btn-secondary {
+    @apply inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-line bg-card px-5 py-4 text-[15px] font-bold text-navy-900
+           transition-colors hover:border-teal-200 hover:bg-teal-50;
+  }
+  .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.14em] text-teal-700; }
+  .field {
+    @apply w-full rounded-2xl border border-line bg-card px-4 py-3.5 text-[15px] font-semibold text-ink placeholder:font-medium placeholder:text-muted/70
+           transition focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-100;
+  }
+}
+
+/* Hide scrollbars inside the phone frame but keep scrolling. */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
