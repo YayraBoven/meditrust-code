@@ -6,7 +6,7 @@ import { BottomNav } from '../components/Shell';
 import { Chip, Note, Press, Reveal } from '../components/ui';
 import { medicineById } from '../data/medicines';
 import type { AllergyGroup, Condition, G6pdStatus, Profile as P } from '../data/types';
-import { searchMedicines } from '../engine/match';
+import { useMedicineSearch } from '../lib/useMedicineSearch';
 import { useApp } from '../store/useApp';
 
 const CONDITIONS: { id: Condition; label: string }[] = [
@@ -50,7 +50,12 @@ function Section({ n, title, sub, children }: { n: number; title: string; sub?: 
 
 function MedicinePicker({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
   const [q, setQ] = useState('');
-  const results = searchMedicines(q, 5).filter((r) => !value.includes(r.medicine.id));
+  const addExternal = useApp((st) => st.addExternal);
+  const { local, remote, state } = useMedicineSearch(q, 5);
+  const results = [
+    ...local.map((r) => r.medicine),
+    ...remote,
+  ].filter((m) => !value.includes(m.id));
   return (
     <div>
       <div className="relative">
@@ -60,10 +65,11 @@ function MedicinePicker({ value, onChange }: { value: string[]; onChange: (ids: 
       {q.length >= 2 && (
         <motion.ul initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-2 overflow-hidden rounded-2xl border border-line bg-card">
           {results.length ? (
-            results.map(({ medicine: m }) => (
+            results.map((m) => (
               <li key={m.id}>
                 <button
                   onClick={() => {
+                    if (m.source === 'rxnorm') addExternal(m);
                     onChange([...value, m.id]);
                     setQ('');
                   }}
@@ -71,14 +77,17 @@ function MedicinePicker({ value, onChange }: { value: string[]; onChange: (ids: 
                 >
                   <span>
                     <span className="block text-[14px] font-bold text-navy-900">{m.brand}</span>
-                    <span className="block text-[12px] text-muted">{m.generic}</span>
+                    <span className="block text-[12px] text-muted">
+                      {m.generic}
+                      {m.source === 'rxnorm' ? ' · RxNorm' : ''}
+                    </span>
                   </span>
                   <Plus size={18} className="text-teal-600" />
                 </button>
               </li>
             ))
           ) : (
-            <li className="px-4 py-3 text-[13px] text-muted">Not in our demo list yet. Tell your pharmacist about it.</li>
+            <li className="px-4 py-3 text-[13px] text-muted">{state === 'loading' ? 'Searching the wider database…' : 'Not found. Tell your pharmacist about it.'}</li>
           )}
         </motion.ul>
       )}

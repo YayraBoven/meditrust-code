@@ -6,6 +6,7 @@ import { BottomNav } from '../components/Shell';
 import { Logo, Press, Reveal, RiskBadge, SectionTitle } from '../components/ui';
 import { DEMO_CASES } from '../data/demo';
 import { medicineById } from '../data/medicines';
+import { displayLevel } from '../engine/checks';
 import { firstName } from '../lib/demo';
 import { useApp } from '../store/useApp';
 
@@ -136,7 +137,7 @@ export default function Home() {
                   <span className="block text-[14px] font-bold text-navy-900">{last.result.medicineIds.map((id) => medicineById(id)?.brand).join(' + ')}</span>
                   <span className="block text-[12px] text-muted">{new Date(last.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                 </span>
-                <RiskBadge level={last.result.level} />
+                <RiskBadge level={displayLevel(last.result)} />
               </Press>
             </Reveal>
           )}

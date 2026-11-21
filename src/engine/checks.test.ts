@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_CASES, EMPTY_PROFILE } from '../data/demo';
-import { runChecks } from './checks';
+import { registerExternal } from '../data/medicines';
+import { displayLevel, runChecks } from './checks';
+import { toMedicine } from './rxnorm';
 import { composeWarning, passesSafetyFilter } from './explain';
 import { CONFIDENT, searchMedicines } from './match';
 
@@ -98,5 +100,47 @@ describe('explanations and safety filter', () => {
   it('rejects unsafe generated wording', () => {
     expect(passesSafetyFilter('It is safe, you can take it.')).toBe(false);
     expect(passesSafetyFilter('Stop taking your medicine. See a doctor.')).toBe(false);
+  });
+});
+
+describe('broad coverage', () => {
+  it('finds magnesium glycinate in the built-in list', () => {
+    expect(searchMedicines('magnesium glycinate')[0].medicine.id).toBe('g-magnesium-glycinate');
+  });
+
+  it('tolerates a typo in a multi-word name', () => {
+    expect(searchMedicines('magnesiun glycinate')[0]?.medicine.ingredients).toContain('magnesium');
+  });
+
+  it('applies rules to the wider Ghana list (warfarin in pregnancy is High)', () => {
+    const r = runChecks({ ...EMPTY_PROFILE, pregnancy: 'pregnant', trimester: 2, g6pd: 'normal' }, ['g-warfarin-5'], true);
+    expect(r.level).toBe('high');
+  });
+
+  it('a medicine whose ingredients have no rules is "unverified", never Low', () => {
+    const r = runChecks({ ...EMPTY_PROFILE, g6pd: 'normal' }, ['g-fluoxetine-20'], true);
+    expect(r.flags).toHaveLength(0);
+    expect(displayLevel(r)).toBe('unverified');
+    expect(composeWarning(r)).toMatch(/does not yet have verified safety information/);
+  });
+
+  it('maps RxNorm ingredients onto MediTrust ingredients where it can', () => {
+    const mg = toMedicine('476818', 'magnesium glycinate', 'IN', ['magnesium glycinate']);
+    expect(mg.ingredients).toEqual(['magnesium']);
+    const tylenol = toMedicine('1', 'Panadol Extra', 'BN', ['acetaminophen', 'caffeine']);
+    expect(tylenol.ingredients).toEqual(['paracetamol', 'caffeine']);
+    const unknown = toMedicine('2', 'Some Herbal Mix', 'BN', ['echinacea']);
+    expect(unknown.ingredients[0]).toMatch(/^rxing-/);
+    expect(unknown.prescriptionOnly).toBeNull();
+  });
+
+  it('an RxNorm medicine with an unknown ingredient still gets the duplicate check', () => {
+    const a = toMedicine('10', 'Brand A', 'BN', ['echinacea']);
+    const b = toMedicine('11', 'Brand B', 'BN', ['echinacea']);
+    registerExternal(a);
+    registerExternal(b);
+    const r = runChecks({ ...EMPTY_PROFILE, g6pd: 'normal', currentMedicines: [b.id] }, [a.id], false);
+    expect(r.flags.some((f) => f.check === 'duplicate')).toBe(true);
+    expect(r.unassessed).toContain('Echinacea');
   });
 });

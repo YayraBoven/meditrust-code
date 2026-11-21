@@ -1,4 +1,5 @@
-import type { CheckResult, Flag, RiskLevel } from '../data/types';
+import type { CheckResult, DisplayLevel, Flag } from '../data/types';
+import { displayLevel } from './checks';
 
 /**
  * Explanation layer. In the prototype the wording comes from reviewed templates.
@@ -8,7 +9,7 @@ import type { CheckResult, Flag, RiskLevel } from '../data/types';
 
 export const REFERRAL = 'Please check with a pharmacist or doctor before you take it.';
 
-export const LEVEL_COPY: Record<RiskLevel, { label: string; headline: string; lead: string }> = {
+export const LEVEL_COPY: Record<DisplayLevel, { label: string; headline: string; lead: string }> = {
   high: {
     label: 'High risk',
     headline: 'Please check before you take this',
@@ -18,6 +19,11 @@ export const LEVEL_COPY: Record<RiskLevel, { label: string; headline: string; le
     label: 'Medium risk',
     headline: 'Possible risk: check with a pharmacist',
     lead: 'We found something a pharmacist should look at with you.',
+  },
+  unverified: {
+    label: 'No verified information',
+    headline: 'We found it, but cannot check it yet',
+    lead: 'MediTrust identified this medicine but does not yet have verified safety rules for it.',
   },
   low: {
     label: 'Low risk',
@@ -34,6 +40,10 @@ export function flagSentence(flag: Flag): string {
 export function composeWarning(result: CheckResult, firstName?: string): string {
   const name = firstName?.trim() ? `${firstName.trim()}, ` : '';
   if (!result.flags.length) {
+    if (displayLevel(result) === 'unverified') {
+      const list = (result.unassessed ?? []).join(', ');
+      return `${name}we identified this medicine (${list}), but MediTrust does not yet have verified safety information for it, so we cannot say whether it suits you. ${REFERRAL}`;
+    }
     return `${name}we did not find a concern in MediTrust's checks. If you are unsure, ask a pharmacist.`;
   }
   const top = result.flags[0];

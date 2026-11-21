@@ -1,12 +1,13 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Camera, Check as CheckIcon, ChevronRight, Keyboard, Mic, Pill, Plus, Search, Stethoscope, X } from 'lucide-react';
+import { Camera, Check as CheckIcon, ChevronRight, Database, Globe, Keyboard, Mic, Pill, Plus, Search, Stethoscope, WifiOff, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Note, Press, Reveal, StepHeader } from '../components/ui';
 import { INGREDIENTS, ingredientNames, medicineById } from '../data/medicines';
 import type { Medicine } from '../data/types';
 import { CHECK_LABELS, runChecks } from '../engine/checks';
-import { CONFIDENT, searchMedicines } from '../engine/match';
+import { CONFIDENT } from '../engine/match';
+import { useMedicineSearch } from '../lib/useMedicineSearch';
 import { useApp } from '../store/useApp';
 
 /* ------------------------------------------------------------------ */
@@ -30,12 +31,12 @@ function getSpeech(): SpeechCtor | null {
 
 export function CheckInput() {
   const navigate = useNavigate();
-  const { draft, setDraft } = useApp();
+  const { draft, setDraft, addExternal } = useApp();
   const [q, setQ] = useState(draft.query);
   const [mode, setMode] = useState<'type' | 'photo' | 'voice'>('type');
   const [listening, setListening] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const results = useMemo(() => searchMedicines(q), [q]);
+  const { local: results, remote, state: remoteState } = useMedicineSearch(q);
   const Speech = typeof window !== 'undefined' ? getSpeech() : null;
   const added = draft.medicineIds.map(medicineById).filter((m): m is Medicine => !!m);
 
@@ -48,8 +49,15 @@ export function CheckInput() {
     navigate('/app/check/confirm');
   };
 
+  const pickRemote = (m: Medicine) => {
+    addExternal(m);
+    pick(m.id);
+  };
+
   const submit = () => {
     if (results[0] && results[0].score >= CONFIDENT) pick(results[0].medicine.id);
+    else if (remote[0]) pickRemote(remote[0]);
+    else if (remoteState === 'loading') return; // wait for the wider search
     else if (q.trim().length >= 2) {
       setDraft({ query: q });
       navigate('/app/check/no-match');
@@ -146,7 +154,54 @@ export function CheckInput() {
                   ))}
                 </AnimatePresence>
               </ul>
-              {q.trim().length >= 2 && results.length === 0 && (
+              {q.trim().length >= 3 && remoteState !== 'idle' && (
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-wider text-muted">
+                    <Globe size={13} /> Wider medicine database
+                  </div>
+                  {remoteState === 'loading' && (
+                    <div className="space-y-2">
+                      {[0, 1].map((k) => (
+                        <div key={k} className="card flex animate-pulse items-center gap-3 p-3.5">
+                          <span className="h-10 w-10 rounded-xl bg-teal-100" />
+                          <span className="flex-1 space-y-2">
+                            <span className="block h-3 w-2/3 rounded bg-teal-100" />
+                            <span className="block h-2.5 w-1/2 rounded bg-canvas" />
+                          </span>
+                        </div>
+                      ))}
+                      <p className="text-[12px] text-muted">Searching RxNorm (U.S. National Library of Medicine)…</p>
+                    </div>
+                  )}
+                  {remoteState === 'offline' && (
+                    <div className="flex items-center gap-2 rounded-2xl bg-card p-3.5 text-[12.5px] text-muted shadow-card">
+                      <WifiOff size={16} /> Could not reach the wider database. Check your internet connection.
+                    </div>
+                  )}
+                  {remoteState === 'done' && remote.length === 0 && results.length === 0 && (
+                    <p className="text-[12.5px] text-muted">No match in the wider database either.</p>
+                  )}
+                  {remoteState === 'done' && remote.length > 0 && (
+                    <ul className="space-y-2">
+                      {remote.map((m, k) => (
+                        <motion.li key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: k * 0.04 } }}>
+                          <Press onClick={() => pickRemote(m)} className="card flex w-full items-center gap-3 p-3.5 text-left hover:border-teal-200">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-navy-900/5 text-navy-800">
+                              <Database size={18} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[14.5px] font-bold text-navy-900">{m.brand}</span>
+                              <span className="block truncate text-[12.5px] text-muted">{ingredientNames(m).join(' + ')} · RxNorm</span>
+                            </span>
+                            <ChevronRight size={18} className="text-muted" />
+                          </Press>
+                        </motion.li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              {q.trim().length >= 2 && results.length === 0 && remote.length === 0 && remoteState !== 'loading' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3">
                   <Press onClick={submit} className="btn-secondary">
                     Search for “{q.trim()}”
@@ -157,7 +212,7 @@ export function CheckInput() {
                 <div className="mt-4">
                   <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-muted">Try</div>
                   <div className="flex flex-wrap gap-2">
-                    {['ibuprofen', 'doxycycline', 'primaquine', 'ColdAway', 'amoxicillin'].map((s) => (
+                    {['ibuprofen', 'doxycycline', 'primaquine', 'ColdAway', 'magnesium glycinate'].map((s) => (
                       <button key={s} onClick={() => setQ(s)} className="rounded-full border border-line bg-card px-3 py-1.5 text-[12.5px] font-semibold text-navy-900 hover:border-teal-200">
                         {s}
                       </button>
@@ -219,6 +274,18 @@ export function CheckInput() {
 /* Step 2 · Confirm                                                    */
 /* ------------------------------------------------------------------ */
 
+const SOURCE_TAG: Record<NonNullable<Medicine['source']>, string> = {
+  demo: 'Demo sample',
+  'ghana-list': 'Common medicine · generic',
+  rxnorm: 'Wider database · RxNorm',
+};
+
+const SOURCE_NOTE: Record<NonNullable<Medicine['source']>, string> = {
+  demo: 'This is an invented demo brand from MediTrust’s illustrative list, not a verified live database.',
+  'ghana-list': 'This comes from MediTrust’s illustrative list of common medicines in Ghana. A pharmacist still needs to review it.',
+  rxnorm: 'Identified using RxNorm (U.S. National Library of Medicine). Names and ingredients may differ from packs sold in Ghana, so check them against your pack.',
+};
+
 function PackArt({ m }: { m: Medicine }) {
   return (
     <motion.div
@@ -230,12 +297,12 @@ function PackArt({ m }: { m: Medicine }) {
       <div className="absolute inset-y-0 left-0 w-24 -skew-x-12 bg-teal-600" style={{ left: -28 }} />
       <div className="absolute inset-y-0 w-6 -skew-x-12 bg-navy-900" style={{ left: 66 }} />
       <div className="relative ml-24">
-        <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-note-ink">Demo sample</div>
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-note-ink">{SOURCE_TAG[m.source ?? 'demo']}</div>
         <div className="mt-1 text-[24px] font-extrabold leading-tight tracking-tight text-teal-700">{m.brand}</div>
         <div className="mt-1 text-[12.5px] font-semibold text-navy-900">
-          {m.strength} · {m.form}
+          {[m.strength, m.form].filter(Boolean).join(' · ')}
         </div>
-        <div className="mt-4 text-[10.5px] text-muted">For prototype use only</div>
+        <div className="mt-4 text-[10.5px] text-muted">{m.source === 'rxnorm' ? 'Source: RxNorm (NLM)' : 'For prototype use only'}</div>
       </div>
       <motion.div
         className="absolute bottom-4 right-5 h-5 w-12 rounded-full bg-gradient-to-r from-teal-500 from-50% to-white to-50% shadow"
@@ -287,7 +354,7 @@ export function Confirm() {
             {[
               ['Brand', m.brand],
               ['Active ingredient', ingredientNames(m).join(' + ')],
-              ['Strength', m.strength],
+              ['Strength', m.strength || 'Not listed'],
               ['Form', m.form],
             ].map(([k, v]) => (
               <div key={k}>
@@ -297,12 +364,14 @@ export function Confirm() {
             ))}
           </dl>
           <div className="mt-4 flex items-center gap-2 text-[12.5px] text-muted">
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${m.prescriptionOnly ? 'bg-navy-900 text-white' : 'bg-teal-100 text-teal-800'}`}>{m.prescriptionOnly ? 'Prescription only' : 'Over the counter'}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${m.prescriptionOnly === null ? 'bg-canvas text-muted' : m.prescriptionOnly ? 'bg-navy-900 text-white' : 'bg-teal-100 text-teal-800'}`}>
+              {m.prescriptionOnly === null ? 'Prescription status unknown' : m.prescriptionOnly ? 'Prescription only' : 'Over the counter'}
+            </span>
             {INGREDIENTS[m.ingredients[0]]?.kind}
           </div>
         </Reveal>
         <Reveal i={3} className="mt-4">
-          <Note>This match is for demonstration only. It comes from MediTrust’s illustrative medicine list, not a verified live database.</Note>
+          <Note title={m.source === 'rxnorm' ? 'Found in a wider database' : 'Illustrative information'}>{SOURCE_NOTE[m.source ?? 'demo']}</Note>
         </Reveal>
         <Reveal i={4} className="mt-6 space-y-3">
           <div className="text-center text-[15px] font-semibold text-navy-900">Is this the correct medicine?</div>

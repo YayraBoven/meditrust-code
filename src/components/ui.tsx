@@ -1,8 +1,8 @@
 import { motion, type HTMLMotionProps } from 'motion/react';
-import { AlertTriangle, ArrowLeft, Check, Info, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, HelpCircle, Info, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { RiskLevel } from '../data/types';
+import type { DisplayLevel } from '../data/types';
 import { LEVEL_COPY } from '../engine/explain';
 
 export function Logo({ size = 36, withText = true }: { size?: number; withText?: boolean }) {
@@ -79,13 +79,14 @@ export function StepHeader({ step, total = 5, onBack, label }: { step?: number; 
   );
 }
 
-const RISK_STYLE: Record<RiskLevel, { wrap: string; dot: string; Icon: typeof ShieldAlert }> = {
+const RISK_STYLE: Record<DisplayLevel, { wrap: string; dot: string; Icon: typeof ShieldAlert }> = {
   high: { wrap: 'bg-risk-highBg text-risk-high border-risk-highLine', dot: 'bg-risk-high', Icon: ShieldAlert },
   medium: { wrap: 'bg-risk-mediumBg text-risk-medium border-risk-mediumLine', dot: 'bg-risk-mediumDot', Icon: AlertTriangle },
   low: { wrap: 'bg-risk-lowBg text-risk-low border-risk-lowLine', dot: 'bg-risk-low', Icon: ShieldCheck },
+  unverified: { wrap: 'bg-[#EEF1F7] text-navy-700 border-[#D5DBE8]', dot: 'bg-navy-700', Icon: HelpCircle },
 };
 
-export function RiskBadge({ level, size = 'sm' }: { level: RiskLevel; size?: 'sm' | 'lg' }) {
+export function RiskBadge({ level, size = 'sm' }: { level: DisplayLevel; size?: 'sm' | 'lg' }) {
   const s = RISK_STYLE[level];
   const Icon = s.Icon;
   return (

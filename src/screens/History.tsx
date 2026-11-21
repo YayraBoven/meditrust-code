@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BottomNav } from '../components/Shell';
 import { Press, Reveal, RiskBadge } from '../components/ui';
 import { medicineById } from '../data/medicines';
+import { displayLevel } from '../engine/checks';
 import { useApp } from '../store/useApp';
 
 export default function History() {
@@ -54,7 +55,7 @@ export default function History() {
                         {new Date(h.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {h.result.flags.length} finding{h.result.flags.length === 1 ? '' : 's'}
                       </span>
                     </span>
-                    <RiskBadge level={h.result.level} />
+                    <RiskBadge level={displayLevel(h.result)} />
                     <ChevronRight size={16} className="text-muted" />
                   </Press>
                 </Reveal>

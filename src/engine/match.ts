@@ -30,12 +30,35 @@ function scoreTerm(q: string, term: string): number {
   if (words.some((w) => w.startsWith(q))) return 0.85;
   if (term.includes(q)) return 0.7;
   // Typo tolerance on whole words, e.g. "ibuprofin" -> "ibuprofen".
+  // Several words typed: score each word against the name's words and average,
+  // so "magnesiun glycinate" still finds "magnesium glycinate".
+  const qWords = q.split(' ');
+  if (qWords.length > 1) {
+    const per = qWords.map((x) =>
+      Math.max(
+        ...words.map((w) => {
+          if (w === x) return 1;
+          if (w.startsWith(x)) return 0.9;
+          if (x.length < 4) return 0;
+          const ratio = 1 - editDistance(x, w) / Math.max(x.length, w.length);
+          return ratio >= 0.75 ? ratio * 0.8 : 0;
+        }),
+      ),
+    );
+    const avg = per.reduce((a, b) => a + b, 0) / per.length;
+    if (avg >= 0.6) return 0.65 * avg;
+  }
   if (q.length >= 4) {
     const best = Math.min(...words.map((w) => editDistance(q, w.slice(0, Math.max(q.length, w.length)))));
     const ratio = 1 - best / Math.max(q.length, 1);
     if (ratio >= 0.7) return 0.6 * ratio;
   }
   return 0;
+}
+
+/** Similarity between what the user typed and any medicine name, 0..1. */
+export function scoreText(query: string, text: string): number {
+  return scoreTerm(norm(query), norm(text));
 }
 
 export interface MatchResult {

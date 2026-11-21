@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Disclaimer, Note, Press, Reveal, RiskBadge, StepHeader, riskStyle } from '../components/ui';
 import { medicineById } from '../data/medicines';
-import { CHECK_LABELS } from '../engine/checks';
+import { CHECK_LABELS, displayLevel } from '../engine/checks';
 import { LEVEL_COPY, composeWarning } from '../engine/explain';
 import { firstName } from '../lib/demo';
 import { useApp } from '../store/useApp';
@@ -41,7 +41,8 @@ export default function Result() {
   const r = entry?.result;
   const name = firstName(profile.name);
   const warning = r ? composeWarning(r, name) : '';
-  const { speaking, toggle, supported } = useSpeech(r ? `${LEVEL_COPY[r.level].label}. ${warning}` : '');
+  const shown = r ? displayLevel(r) : 'low';
+  const { speaking, toggle, supported } = useSpeech(r ? `${LEVEL_COPY[shown].label}. ${warning}` : '');
 
   if (!r || !entry) {
     return (
@@ -53,8 +54,8 @@ export default function Result() {
   }
 
   const meds = r.medicineIds.map(medicineById);
-  const style = riskStyle[r.level];
-  const copy = LEVEL_COPY[r.level];
+  const style = riskStyle[shown];
+  const copy = LEVEL_COPY[shown];
   const Icon = style.Icon;
 
   return (
@@ -102,6 +103,20 @@ export default function Result() {
               ))}
             </div>
           </div>
+        )}
+
+        {(r.unassessed?.length ?? 0) > 0 && (
+          <Reveal i={3} className="mt-6 rounded-2xl border border-[#D5DBE8] bg-[#EEF1F7] p-4">
+            <div className="text-[13.5px] font-bold text-navy-900">Not covered by our rules yet</div>
+            <p className="mt-1 text-[13px] leading-relaxed text-navy-700">
+              MediTrust does not yet have verified safety information for: <span className="font-semibold">{r.unassessed.join(', ')}</span>. A pharmacist can check these for you.
+            </p>
+          </Reveal>
+        )}
+        {(r.unknownRxStatus?.length ?? 0) > 0 && r.prescribed === false && (
+          <Reveal i={3} className="mt-3 rounded-2xl border border-line bg-card p-4 text-[13px] leading-relaxed text-muted">
+            We do not know whether {r.unknownRxStatus.join(', ')} needs a prescription in Ghana. Ask your pharmacist.
+          </Reveal>
         )}
 
         <Reveal i={3} className="card mt-6 p-4">

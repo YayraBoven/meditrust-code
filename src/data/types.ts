@@ -20,19 +20,33 @@ export interface Ingredient {
   allergyGroups?: AllergyGroup[];
   /** Plain-language class shown to users, e.g. "pain reliever". */
   kind: string;
+  /**
+   * True when the rules table has been written with this ingredient in mind
+   * (G6PD, pregnancy, conditions, allergies). If false, MediTrust can identify
+   * the ingredient but must not report "no concern" for it.
+   */
+  assessed?: boolean;
+  /** Other names for the same ingredient, e.g. RxNorm's "acetaminophen". */
+  synonyms?: string[];
 }
+
+export type MedicineSource = 'demo' | 'ghana-list' | 'rxnorm';
 
 export interface Medicine {
   id: string;
-  /** Brand names are invented for the prototype and marked as demo samples. */
+  /** Demo brand names are invented; Ghana-list entries use the generic name. */
   brand: string;
   generic: string;
   strength: string;
-  form: 'Tablet' | 'Capsule' | 'Syrup' | 'Caplet';
+  form: string;
   ingredients: string[];
-  prescriptionOnly: boolean;
+  /** null = unknown (e.g. found in RxNorm, Ghana status not recorded). */
+  prescriptionOnly: boolean | null;
   /** Extra words people might type. */
   aliases?: string[];
+  source?: MedicineSource;
+  /** Display names for ingredients not in MediTrust's own table (RxNorm results). */
+  ingredientLabels?: Record<string, string>;
 }
 
 export interface Profile {
@@ -68,4 +82,11 @@ export interface CheckResult {
   level: RiskLevel;
   flags: Flag[];
   checksRun: { kind: CheckKind; label: string; flagged: boolean }[];
+  /** Ingredients MediTrust identified but has no verified rules for. */
+  unassessed: string[];
+  /** Medicines whose prescription status in Ghana is unknown. */
+  unknownRxStatus: string[];
 }
+
+/** What the user sees: a risk level, or "no verified information yet". */
+export type DisplayLevel = RiskLevel | 'unverified';

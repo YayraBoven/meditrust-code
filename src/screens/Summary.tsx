@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Logo, Press, Reveal, RiskBadge, StepHeader } from '../components/ui';
 import { ingredientNames, medicineById } from '../data/medicines';
+import { displayLevel } from '../engine/checks';
 import { LEVEL_COPY, REFERRAL } from '../engine/explain';
 import { SIGNPOSTS } from './Help';
 import { useApp } from '../store/useApp';
@@ -49,7 +50,7 @@ export default function Summary() {
   ].filter(Boolean);
   const text = buildShareText(
     entry.at,
-    r.level,
+    displayLevel(r),
     meds.map((m) => `${m!.brand} (${ingredientNames(m!).join(' + ')})`),
     r.flags.map((f) => f.message),
     context,
@@ -91,14 +92,14 @@ export default function Summary() {
                 <div key={m!.id} className="mt-1">
                   <div className="text-[16px] font-extrabold text-navy-900">{m!.brand}</div>
                   <div className="text-[12.5px] text-muted">
-                    {ingredientNames(m!).join(' + ')} · {m!.strength} · {m!.prescriptionOnly ? 'Prescription only' : 'Over the counter'}
+                    {ingredientNames(m!).join(' + ')} · {[m!.strength, m!.prescriptionOnly === null ? 'Prescription status unknown' : m!.prescriptionOnly ? 'Prescription only' : 'Over the counter'].filter(Boolean).join(' · ')}
                   </div>
                 </div>
               ))}
             </div>
             <div className="flex items-center justify-between">
               <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">Result</div>
-              <RiskBadge level={r.level} size="lg" />
+              <RiskBadge level={displayLevel(r)} size="lg" />
             </div>
             {r.flags.length > 0 ? (
               <ul className="space-y-2">
@@ -110,7 +111,7 @@ export default function Summary() {
                 ))}
               </ul>
             ) : (
-              <p className="text-[13px] text-muted">No concern found in MediTrust’s three checks.</p>
+              <p className="text-[13px] text-muted">{displayLevel(r) === 'unverified' ? `No verified safety information yet for: ${r.unassessed.join(', ')}.` : 'No concern found in MediTrust’s three checks.'}</p>
             )}
             {context.length > 0 && (
               <div>

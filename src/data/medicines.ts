@@ -1,3 +1,4 @@
+import { EXTRA_INGREDIENTS, GHANA_MEDICINES } from './generics';
 import type { Ingredient, Medicine } from './types';
 
 /**
@@ -7,7 +8,7 @@ import type { Ingredient, Medicine } from './types';
  * and real data would come from the Ghana FDA Products Register.
  */
 
-export const INGREDIENTS: Record<string, Ingredient> = {
+const DEMO_INGREDIENTS: Record<string, Ingredient> = {
   paracetamol: { id: 'paracetamol', name: 'Paracetamol', kind: 'pain and fever reliever' },
   ibuprofen: { id: 'ibuprofen', name: 'Ibuprofen', kind: 'anti-inflammatory pain reliever (NSAID)', allergyGroups: ['nsaid'] },
   diclofenac: { id: 'diclofenac', name: 'Diclofenac', kind: 'anti-inflammatory pain reliever (NSAID)', allergyGroups: ['nsaid'] },
@@ -38,7 +39,7 @@ export const INGREDIENTS: Record<string, Ingredient> = {
   folic: { id: 'folic', name: 'Folic acid', kind: 'vitamin' },
 };
 
-export const MEDICINES: Medicine[] = [
+const DEMO_MEDICINES: Medicine[] = [
   { id: 'paracare-500', brand: 'Paracare 500', generic: 'Paracetamol 500 mg', strength: '500 mg', form: 'Tablet', ingredients: ['paracetamol'], prescriptionOnly: false, aliases: ['acetaminophen', 'para'] },
   { id: 'paraplus-extra', brand: 'ParaPlus Extra', generic: 'Paracetamol + Caffeine', strength: '500 mg / 65 mg', form: 'Caplet', ingredients: ['paracetamol', 'caffeine'], prescriptionOnly: false },
   { id: 'coldaway-day', brand: 'ColdAway Day', generic: 'Cold and flu (paracetamol + phenylephrine)', strength: '500 mg / 5 mg', form: 'Caplet', ingredients: ['paracetamol', 'phenylephrine'], prescriptionOnly: false, aliases: ['cold', 'flu', 'catarrh'] },
@@ -67,6 +68,51 @@ export const MEDICINES: Medicine[] = [
   { id: 'fefol-care', brand: 'Fefol-Care', generic: 'Iron + Folic acid', strength: '150 mg / 0.5 mg', form: 'Capsule', ingredients: ['ferrous', 'folic'], prescriptionOnly: false, aliases: ['iron', 'blood tonic', 'pregnancy'] },
 ];
 
-export const medicineById = (id: string) => MEDICINES.find((m) => m.id === id);
+const SYNONYMS: Record<string, string[]> = {
+  paracetamol: ['acetaminophen'],
+  chlorphenamine: ['chlorpheniramine', 'chlorpheniramine maleate'],
+  clavulanate: ['clavulanate', 'clavulanate potassium', 'clavulanic acid'],
+  ferrous: ['ferrous sulfate', 'ferrous fumarate', 'iron'],
+  folic: ['folic acid'],
+  amoxicillin: ['amoxicillin trihydrate'],
+  doxycycline: ['doxycycline hyclate', 'doxycycline monohydrate'],
+  metformin: ['metformin hydrochloride'],
+  amlodipine: ['amlodipine besylate'],
+  ciprofloxacin: ['ciprofloxacin hydrochloride'],
+  phenylephrine: ['phenylephrine hydrochloride'],
+  diclofenac: ['diclofenac sodium', 'diclofenac potassium'],
+  primaquine: ['primaquine phosphate'],
+};
 
-export const ingredientNames = (m: Medicine) => m.ingredients.map((i) => INGREDIENTS[i]?.name ?? i);
+/** Every ingredient MediTrust knows. Demo ingredients were all written into the rules. */
+export const INGREDIENTS: Record<string, Ingredient> = {
+  ...Object.fromEntries(Object.values(DEMO_INGREDIENTS).map((i) => [i.id, { ...i, assessed: true, synonyms: SYNONYMS[i.id] }])),
+  ...Object.fromEntries(EXTRA_INGREDIENTS.map((i) => [i.id, i])),
+};
+
+export const MEDICINES: Medicine[] = [...DEMO_MEDICINES.map((m) => ({ ...m, source: 'demo' as const })), ...GHANA_MEDICINES];
+
+/* ---- External medicines (found in RxNorm) are registered at runtime. ---- */
+const external = new Map<string, Medicine>();
+export const registerExternal = (m: Medicine) => external.set(m.id, m);
+export const externalMedicines = () => [...external.values()];
+
+export const medicineById = (id: string): Medicine | undefined => MEDICINES.find((m) => m.id === id) ?? external.get(id);
+
+export const ingredientName = (m: Medicine, ingId: string) => INGREDIENTS[ingId]?.name ?? m.ingredientLabels?.[ingId] ?? ingId;
+
+export const ingredientNames = (m: Medicine) => m.ingredients.map((i) => ingredientName(m, i));
+
+/** Map an ingredient name from another database (e.g. RxNorm) to MediTrust's own id. */
+export function findIngredientId(name: string): string | undefined {
+  const n = name.toLowerCase().trim();
+  for (const i of Object.values(INGREDIENTS)) {
+    if (i.name.toLowerCase() === n || i.id === n || i.synonyms?.includes(n)) return i.id;
+  }
+  // Salts and forms: "magnesium glycinate" -> magnesium, "zinc sulfate" -> zinc.
+  for (const i of Object.values(INGREDIENTS)) {
+    if (i.synonyms?.some((s) => n.startsWith(`${s} `))) return i.id;
+    if (n.startsWith(`${i.name.toLowerCase()} `) && !['vitamin', 'insulin'].includes(i.name.toLowerCase())) return i.id;
+  }
+  return undefined;
+}

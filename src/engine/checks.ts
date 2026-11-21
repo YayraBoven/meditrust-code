@@ -1,6 +1,6 @@
-import { INGREDIENTS, medicineById } from '../data/medicines';
-import { SAFETY_RULES, type SafetyRule } from '../data/rules';
-import type { CheckKind, CheckResult, Flag, Medicine, Profile, RiskLevel } from '../data/types';
+import { INGREDIENTS, ingredientName, medicineById } from '../data/medicines';
+import { ALL_RULES, type SafetyRule } from '../data/rules';
+import type { CheckKind, CheckResult, DisplayLevel, Flag, Medicine, Profile, RiskLevel } from '../data/types';
 
 /**
  * The clinical safety engine. Deterministic rules only: given the same profile and
@@ -91,7 +91,7 @@ function otherAllergyFlags(p: Profile, med: Medicine): Flag[] {
 }
 
 function prescriptionFlag(med: Medicine, prescribed: boolean | null): Flag[] {
-  if (prescribed !== false || !med.prescriptionOnly) return [];
+  if (prescribed !== false || med.prescriptionOnly !== true) return [];
   const isAntibiotic = med.ingredients.some((i) => INGREDIENTS[i]?.kind.includes('antibiotic'));
   return [
     {
@@ -122,7 +122,7 @@ function duplicateFlags(checked: Medicine[], current: Medicine[]): Flag[] {
         const key = [ing, ...[a.m.id, b.m.id].sort()].join('|');
         if (seen.has(key)) continue;
         seen.add(key);
-        const name = INGREDIENTS[ing]?.name ?? ing;
+        const name = ingredientName(a.m, ing);
         const same = a.m.id === b.m.id;
         flags.push({
           id: `dup-${key}`,
@@ -147,7 +147,7 @@ export function runChecks(profile: Profile, medicineIds: string[], prescribed: b
 
   const flags: Flag[] = [];
   for (const med of checked) {
-    for (const rule of SAFETY_RULES) {
+    for (const rule of ALL_RULES) {
       if (med.ingredients.includes(rule.ingredient) && ruleApplies(rule, profile)) {
         flags.push(flagFromRule(rule, profile, med));
       }
@@ -160,6 +160,10 @@ export function runChecks(profile: Profile, medicineIds: string[], prescribed: b
   // Highest risk first, so the most important message is read first.
   const unique = [...new Map(flags.map((f) => [f.id, f])).values()].sort((a, b) => RANK[b.level] - RANK[a.level]);
 
+  // Ingredients MediTrust can name but has no verified rules for: never report "no concern" for these.
+  const unassessed = [...new Set(checked.flatMap((m) => m.ingredients.filter((i) => !INGREDIENTS[i]?.assessed).map((i) => ingredientName(m, i))))];
+  const unknownRxStatus = checked.filter((m) => m.prescriptionOnly === null).map((m) => m.brand);
+
   const kinds: CheckKind[] = ['g6pd-pregnancy', 'self-medication', 'duplicate'];
   return {
     medicineIds,
@@ -167,5 +171,13 @@ export function runChecks(profile: Profile, medicineIds: string[], prescribed: b
     level: unique.length ? maxLevel(unique.map((f) => f.level)) : 'low',
     flags: unique,
     checksRun: kinds.map((kind) => ({ kind, label: CHECK_LABELS[kind], flagged: unique.some((f) => f.check === kind) })),
+    unassessed,
+    unknownRxStatus,
   };
+}
+
+/** What to show: a risk level, or "no verified information yet" when nothing was found but coverage is incomplete. */
+export function displayLevel(r: Pick<CheckResult, 'level' | 'flags' | 'unassessed'>): DisplayLevel {
+  if (!r.flags.length && (r.unassessed?.length ?? 0) > 0) return 'unverified';
+  return r.level;
 }

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { EMPTY_PROFILE } from '../data/demo';
-import type { CheckResult, Profile } from '../data/types';
+import { registerExternal } from '../data/medicines';
+import type { CheckResult, Medicine, Profile } from '../data/types';
 
 export interface HistoryEntry {
   id: string;
@@ -23,6 +24,9 @@ interface AppState {
   history: HistoryEntry[];
   draft: Draft;
   demoId: string | null;
+  /** Medicines found in RxNorm, kept so past checks still show their names. */
+  externals: Medicine[];
+  addExternal: (m: Medicine) => void;
   setOnboarded: (v: boolean) => void;
   setConsent: (v: boolean) => void;
   setProfile: (p: Profile) => void;
@@ -71,6 +75,11 @@ export const useApp = create<AppState>()(
       history: [],
       draft: EMPTY_DRAFT,
       demoId: null,
+      externals: [],
+      addExternal: (m) => {
+        registerExternal(m);
+        if (!get().externals.some((e) => e.id === m.id)) set({ externals: [...get().externals, m].slice(-100) });
+      },
       setOnboarded: (onboarded) => set({ onboarded }),
       setConsent: (consent) => set({ consent }),
       setProfile: (profile) => set({ profile }),
@@ -86,6 +95,10 @@ export const useApp = create<AppState>()(
       setDemo: (demoId) => set({ demoId }),
       resetAll: () => set({ onboarded: false, consent: false, profile: EMPTY_PROFILE, history: [], draft: EMPTY_DRAFT, demoId: null }),
     }),
-    { name: 'meditrust-v1', storage: createJSONStorage(() => safeStorage) },
+    {
+      name: 'meditrust-v1',
+      storage: createJSONStorage(() => safeStorage),
+      onRehydrateStorage: () => (state) => state?.externals?.forEach(registerExternal),
+    },
   ),
 );
