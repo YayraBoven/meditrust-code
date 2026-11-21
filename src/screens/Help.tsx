@@ -1,6 +1,7 @@
 import { BadgeCheck, BookOpen, ChevronRight, Flag, ShieldCheck, Store, XCircle } from 'lucide-react';
 import { BottomNav } from '../components/Shell';
 import { Note, Reveal, StepHeader } from '../components/ui';
+import { useT } from '../i18n';
 
 /** External services are signposts only: links out, no data exchanged, access unconfirmed. */
 export const SIGNPOSTS = [
@@ -35,14 +36,15 @@ export const SIGNPOSTS = [
 ];
 
 export default function Help() {
+  const t = useT();
   return (
     <>
       <div className="no-scrollbar flex-1 overflow-y-auto">
         <StepHeader label="Get help" />
         <div className="px-5 pb-8">
           <Reveal>
-            <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-navy-900">Services that can help</h1>
-            <p className="mt-2 text-[14px] leading-relaxed text-muted">These are separate services run by others. MediTrust links to them; it does not share your data with them.</p>
+            <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Services that can help')}</h1>
+            <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('These are separate services run by others. MediTrust links to them; it does not share your data with them.')}</p>
           </Reveal>
           <div className="mt-5 space-y-3">
             {SIGNPOSTS.map((s, k) => (
@@ -52,9 +54,9 @@ export default function Help() {
                     <s.Icon size={20} />
                   </span>
                   <span className="flex-1">
-                    <span className="block text-[15px] font-bold text-navy-900">{s.action}</span>
+                    <span className="block text-[15px] font-bold text-navy-900">{t(s.action)}</span>
                     <span className="block text-[12px] font-semibold text-teal-700">{s.name}</span>
-                    <span className="mt-1 block text-[12.5px] leading-relaxed text-muted">{s.body}</span>
+                    <span className="mt-1 block text-[12.5px] leading-relaxed text-muted">{t(s.body)}</span>
                   </span>
                   <ChevronRight size={16} className="mt-1 text-muted" />
                 </a>
@@ -63,7 +65,7 @@ export default function Help() {
           </div>
 
           <Reveal i={6} className="card mt-6 p-5">
-            <h2 className="text-[15px] font-bold text-navy-900">What MediTrust is, and is not</h2>
+            <h2 className="text-[15px] font-bold text-navy-900">{t('What MediTrust is, and is not')}</h2>
             <ul className="mt-3 space-y-2.5 text-[13.5px] leading-snug">
               {[
                 [true, 'Checks a medicine against your own profile, before you take it'],
@@ -72,17 +74,17 @@ export default function Help() {
                 [false, 'Does not diagnose or prescribe'],
                 [false, 'Never suggests a replacement or tells you to stop a medicine'],
                 [false, 'Never calls a medicine “safe”'],
-              ].map(([ok, t]) => (
-                <li key={String(t)} className="flex gap-2.5 text-navy-900">
+              ].map(([ok, line]) => (
+                <li key={String(line)} className="flex gap-2.5 text-navy-900">
                   {ok ? <ShieldCheck size={17} className="mt-0.5 shrink-0 text-teal-600" /> : <XCircle size={17} className="mt-0.5 shrink-0 text-risk-high" />}
-                  {t}
+                  {t(String(line))}
                 </li>
               ))}
             </ul>
           </Reveal>
 
           <Reveal i={7} className="mt-4">
-            <Note title="If you feel very unwell">Go to the nearest health facility or call for emergency help. Do not wait for an app.</Note>
+            <Note title="If you feel very unwell">{t('Go to the nearest health facility or call for emergency help. Do not wait for an app.')}</Note>
           </Reveal>
         </div>
       </div>

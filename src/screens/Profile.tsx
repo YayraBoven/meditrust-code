@@ -8,6 +8,8 @@ import { medicineById } from '../data/medicines';
 import type { AllergyGroup, Condition, G6pdStatus, Profile as P } from '../data/types';
 import { useMedicineSearch } from '../lib/useMedicineSearch';
 import { useApp } from '../store/useApp';
+import { LanguagePicker } from '../components/LanguagePicker';
+import { useT } from '../i18n';
 
 const CONDITIONS: { id: Condition; label: string }[] = [
   { id: 'hypertension', label: 'Hypertension' },
@@ -34,13 +36,14 @@ const G6PD: { id: G6pdStatus; label: string; hint: string }[] = [
 ];
 
 function Section({ n, title, sub, children }: { n: number; title: string; sub?: string; children: ReactNode }) {
+  const t = useT();
   return (
     <Reveal i={n} className="card p-5">
       <div className="mb-4 flex gap-3">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-teal-600 text-[13px] font-bold text-white">{n}</span>
         <div>
-          <h2 className="text-[16px] font-bold text-navy-900">{title}</h2>
-          {sub && <p className="mt-0.5 text-[12.5px] leading-snug text-muted">{sub}</p>}
+          <h2 className="text-[16px] font-bold text-navy-900">{t(title)}</h2>
+          {sub && <p className="mt-0.5 text-[12.5px] leading-snug text-muted">{t(sub)}</p>}
         </div>
       </div>
       {children}
@@ -50,6 +53,7 @@ function Section({ n, title, sub, children }: { n: number; title: string; sub?: 
 
 function MedicinePicker({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
   const [q, setQ] = useState('');
+  const t = useT();
   const addExternal = useApp((st) => st.addExternal);
   const { local, remote, state } = useMedicineSearch(q, 5);
   const results = [
@@ -60,7 +64,7 @@ function MedicinePicker({ value, onChange }: { value: string[]; onChange: (ids: 
     <div>
       <div className="relative">
         <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search a medicine you take" className="field pl-10" aria-label="Search a medicine you take" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('Search a medicine you take')} className="field pl-10" aria-label={t('Search a medicine you take')} />
       </div>
       {q.length >= 2 && (
         <motion.ul initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-2 overflow-hidden rounded-2xl border border-line bg-card">
@@ -87,7 +91,7 @@ function MedicinePicker({ value, onChange }: { value: string[]; onChange: (ids: 
               </li>
             ))
           ) : (
-            <li className="px-4 py-3 text-[13px] text-muted">{state === 'loading' ? 'Searching the wider database…' : 'Not found. Tell your pharmacist about it.'}</li>
+            <li className="px-4 py-3 text-[13px] text-muted">{t(state === 'loading' ? 'Searching the wider database…' : 'Not found. Tell your pharmacist about it.')}</li>
           )}
         </motion.ul>
       )}
@@ -118,6 +122,7 @@ export default function Profile() {
   const { profile, setProfile, resetAll, demoId } = useApp();
   const [p, setP] = useState<P>(profile);
   const [saved, setSaved] = useState(false);
+  const t = useT();
   const up = (patch: Partial<P>) => {
     setP((cur) => ({ ...cur, ...patch }));
     setSaved(false);
@@ -135,14 +140,17 @@ export default function Profile() {
       <div className="no-scrollbar flex-1 overflow-y-auto">
         <div className="px-5 pb-6 pt-[max(env(safe-area-inset-top),22px)]">
           <Reveal>
-            <div className="eyebrow">{setup ? 'Step 1 · About you' : 'Your profile'}</div>
-            <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">Build your health profile</h1>
-            <p className="mt-2 text-[14px] leading-relaxed text-muted">Tell us a little about your health. Every check uses this. You can update it later.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="eyebrow">{t(setup ? 'Step 1 · About you' : 'Your profile')}</div>
+              <LanguagePicker />
+            </div>
+            <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Build your health profile')}</h1>
+            <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Tell us a little about your health. Every check uses this. You can update it later.')}</p>
           </Reveal>
 
           {demoId && (
             <div className="mt-4">
-              <Note title="Demo patient loaded">This is a demo profile for presenting. Edit it freely or delete it below.</Note>
+              <Note title="Demo patient loaded">{t('This is a demo profile for presenting. Edit it freely or delete it below.')}</Note>
             </div>
           )}
 
@@ -150,11 +158,11 @@ export default function Profile() {
             <Section n={1} title="About you">
               <div className="grid grid-cols-[1fr_96px] gap-3">
                 <label className="block">
-                  <span className="mb-1.5 block text-[13px] font-bold text-navy-900">First name <span className="font-medium text-muted">(optional)</span></span>
-                  <input className="field" value={p.name} onChange={(e) => up({ name: e.target.value })} placeholder="e.g. Ama" />
+                  <span className="mb-1.5 block text-[13px] font-bold text-navy-900">{t('First name')} <span className="font-medium text-muted">({t('optional')})</span></span>
+                  <input className="field" value={p.name} onChange={(e) => up({ name: e.target.value })} placeholder="Ama" />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-[13px] font-bold text-navy-900">Age</span>
+                  <span className="mb-1.5 block text-[13px] font-bold text-navy-900">{t('Age')}</span>
                   <input className="field" inputMode="numeric" value={p.age ?? ''} onChange={(e) => up({ age: e.target.value ? Math.min(120, Number(e.target.value.replace(/\D/g, ''))) : null })} placeholder="42" />
                 </label>
               </div>
@@ -164,7 +172,7 @@ export default function Profile() {
               <div className="grid grid-cols-3 gap-2">
                 {(['none', 'some', 'not-sure'] as const).map((a) => (
                   <Chip key={a} on={p.allergyAnswer === a} onClick={() => up({ allergyAnswer: a, ...(a !== 'some' ? { allergies: [], otherAllergies: '' } : {}) })}>
-                    {a === 'none' ? 'None' : a === 'some' ? 'Yes' : 'Not sure'}
+                    {t(a === 'none' ? 'None' : a === 'some' ? 'Yes' : 'Not sure')}
                   </Chip>
                 ))}
               </div>
@@ -173,11 +181,11 @@ export default function Profile() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {ALLERGIES.map((a) => (
                       <Chip key={a.id} on={p.allergies.includes(a.id)} onClick={() => up({ allergies: toggle(p.allergies, a.id) })}>
-                        {a.label}
+                        {t(a.label)}
                       </Chip>
                     ))}
                   </div>
-                  <input className="field mt-3" value={p.otherAllergies} onChange={(e) => up({ otherAllergies: e.target.value })} placeholder="Or type another allergy" />
+                  <input className="field mt-3" value={p.otherAllergies} onChange={(e) => up({ otherAllergies: e.target.value })} placeholder={t('Or type another allergy')} />
                 </motion.div>
               )}
             </Section>
@@ -190,7 +198,7 @@ export default function Profile() {
               <div className="flex flex-wrap gap-2">
                 {CONDITIONS.map((c) => (
                   <Chip key={c.id} on={p.conditions.includes(c.id)} onClick={() => up({ conditions: toggle(p.conditions, c.id) })}>
-                    {c.label}
+                    {t(c.label)}
                   </Chip>
                 ))}
               </div>
@@ -207,27 +215,27 @@ export default function Profile() {
                   ] as const
                 ).map(([id, label]) => (
                   <Chip key={id} on={p.pregnancy === id} onClick={() => up({ pregnancy: id })}>
-                    {label}
+                    {t(label)}
                   </Chip>
                 ))}
               </div>
               {p.pregnancy === 'pregnant' && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
-                  <div className="mb-2 mt-4 text-[13px] font-bold text-navy-900">Which trimester?</div>
+                  <div className="mb-2 mt-4 text-[13px] font-bold text-navy-900">{t('Which trimester?')}</div>
                   <div className="grid grid-cols-3 gap-2">
-                    {([1, 2, 3] as const).map((t) => (
+                    {([1, 2, 3] as const).map((tri) => (
                       <Press
-                        key={t}
-                        onClick={() => up({ trimester: t })}
-                        className={`rounded-2xl border px-2 py-3 text-center ${p.trimester === t ? 'border-teal-600 bg-teal-100 text-teal-800' : 'border-line bg-card text-navy-900'}`}
+                        key={tri}
+                        onClick={() => up({ trimester: tri })}
+                        className={`rounded-2xl border px-2 py-3 text-center ${p.trimester === tri ? 'border-teal-600 bg-teal-100 text-teal-800' : 'border-line bg-card text-navy-900'}`}
                       >
-                        <div className="text-[15px] font-extrabold">{t === 1 ? '1st' : t === 2 ? '2nd' : '3rd'}</div>
-                        <div className="text-[11px] font-semibold opacity-80">{t === 1 ? 'Weeks 1–12' : t === 2 ? 'Weeks 13–27' : 'Week 28+'}</div>
+                        <div className="text-[15px] font-extrabold">{tri === 1 ? '1' : tri === 2 ? '2' : '3'}</div>
+                        <div className="text-[11px] font-semibold opacity-80">{t('Weeks')} {tri === 1 ? '1–12' : tri === 2 ? '13–27' : '28+'}</div>
                       </Press>
                     ))}
                   </div>
                   <button onClick={() => up({ trimester: null })} className={`mt-2 text-[12.5px] font-bold ${p.trimester === null ? 'text-teal-700' : 'text-muted'}`}>
-                    {p.trimester === null ? '✓ ' : ''}I am not sure
+                    {p.trimester === null ? '✓ ' : ''}{t('I am not sure')}
                   </button>
                 </motion.div>
               )}
@@ -242,32 +250,32 @@ export default function Profile() {
                     className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left ${p.g6pd === g.id ? 'border-teal-600 bg-teal-50' : 'border-line bg-card'}`}
                   >
                     <span>
-                      <span className="block text-[14px] font-bold text-navy-900">{g.label}</span>
-                      {g.hint && <span className="block text-[12px] text-muted">{g.hint}</span>}
+                      <span className="block text-[14px] font-bold text-navy-900">{t(g.label)}</span>
+                      {g.hint && <span className="block text-[12px] text-muted">{t(g.hint)}</span>}
                     </span>
                     <span className={`h-5 w-5 rounded-full border-2 ${p.g6pd === g.id ? 'border-teal-600 bg-teal-600 shadow-[inset_0_0_0_3px_white]' : 'border-line'}`} />
                   </Press>
                 ))}
               </div>
-              <p className="mt-3 text-[12px] leading-relaxed text-muted">A relative having it, or not knowing, is treated as a question to ask a pharmacist. It does not mean you have it.</p>
+              <p className="mt-3 text-[12px] leading-relaxed text-muted">{t('A relative having it, or not knowing, is treated as a question to ask a pharmacist. It does not mean you have it.')}</p>
             </Section>
           </div>
 
           <div className="mt-6 space-y-3">
             <Press onClick={save} className="btn-primary">
-              {setup ? 'Save and continue' : saved ? 'Saved ✓' : 'Save profile'}
+              {setup ? t('Save and continue') : saved ? `${t('Saved')} ✓` : t('Save profile')}
             </Press>
             {!setup && (
               <button
                 onClick={() => {
-                  if (window.confirm('Delete your profile and history from this phone?')) {
+                  if (window.confirm(t('Delete your profile and history from this phone?'))) {
                     resetAll();
                     navigate('/app/welcome', { replace: true });
                   }
                 }}
                 className="flex w-full items-center justify-center gap-2 py-2 text-[13px] font-bold text-risk-high"
               >
-                <Trash2 size={15} /> Delete my profile from this phone
+                <Trash2 size={15} /> {t('Delete my profile from this phone')}
               </button>
             )}
           </div>

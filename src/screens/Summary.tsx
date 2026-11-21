@@ -8,6 +8,7 @@ import { displayLevel } from '../engine/checks';
 import { LEVEL_COPY, REFERRAL } from '../engine/explain';
 import { SIGNPOSTS } from './Help';
 import { useApp } from '../store/useApp';
+import { useT } from '../i18n';
 
 /** Only what a pharmacist needs: the medicine, the flag and the reason. No name. */
 function buildShareText(entryAt: string, level: keyof typeof LEVEL_COPY, meds: string[], reasons: string[], context: string[]) {
@@ -31,12 +32,14 @@ export default function Summary() {
   const entry = history.find((h) => h.id === id);
   const [preview, setPreview] = useState(false);
   const [copied, setCopied] = useState(false);
+  const t = useT();
+  const lang = useApp((s) => s.lang);
 
   if (!entry) {
     return (
       <div className="flex flex-1 flex-col">
         <StepHeader onBack={() => navigate('/app')} />
-        <div className="p-6 text-muted">This summary is no longer on this phone.</div>
+        <div className="p-6 text-muted">{t('This summary is no longer on this phone.')}</div>
       </div>
     );
   }
@@ -72,8 +75,9 @@ export default function Summary() {
       <StepHeader label="Summary" onBack={() => navigate(-1)} />
       <div className="px-5 pb-8">
         <Reveal>
-          <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-navy-900">Show this to your pharmacist</h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-muted">Turn your phone around at the counter, or choose to share it. Nothing is sent unless you tap share.</p>
+          <h1 className="text-[26px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Show this to your pharmacist')}</h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Turn your phone around at the counter, or choose to share it. Nothing is sent unless you tap share.')}</p>
+          {lang !== 'en' && <p className="mt-2 rounded-xl bg-teal-50 px-3 py-2 text-[12.5px] font-semibold text-teal-800">{t('The summary below is in English so any pharmacist can read it.')}</p>}
         </Reveal>
 
         <Reveal i={1} className="relative mt-5 overflow-hidden rounded-xl3 border border-line bg-card shadow-lift">
@@ -133,10 +137,10 @@ export default function Summary() {
         </Reveal>
 
         <Reveal i={2} className="mt-6">
-          <h2 className="mb-3 text-[15px] font-bold text-navy-900">Share it yourself</h2>
+          <h2 className="mb-3 text-[15px] font-bold text-navy-900">{t('Share it yourself')}</h2>
           <Press onClick={() => setPreview((v) => !v)} className="mb-3 flex w-full items-center justify-between rounded-2xl border border-line bg-card px-4 py-3 text-left">
             <span className="flex items-center gap-2 text-[13.5px] font-bold text-navy-900">
-              <Eye size={16} className="text-teal-600" /> See exactly what will be shared
+              <Eye size={16} className="text-teal-600" /> {t('See exactly what will be shared')}
             </span>
             <motion.span animate={{ rotate: preview ? 90 : 0 }}>
               <ChevronRight size={16} className="text-muted" />
@@ -157,17 +161,17 @@ export default function Summary() {
               <MessageSquareText size={22} className="text-teal-600" /> SMS
             </a>
             <button onClick={copy} className="card flex flex-col items-center gap-2 py-4 text-[12.5px] font-bold text-navy-900 hover:border-teal-200">
-              {copied ? <Check size={22} className="text-risk-low" /> : <Copy size={22} className="text-navy-700" />} {copied ? 'Copied' : 'Copy'}
+              {copied ? <Check size={22} className="text-risk-low" /> : <Copy size={22} className="text-navy-700" />} {t(copied ? 'Copied' : 'Copy')}
             </button>
           </div>
           <p className="mt-2 text-center text-[11.5px] text-muted">
             <QrCode size={12} className="mr-1 inline" />
-            Your first name is never included.
+            {t('Your first name is never included.')}
           </p>
         </Reveal>
 
         <Reveal i={3} className="mt-6">
-          <h2 className="mb-3 text-[15px] font-bold text-navy-900">Other services that can help</h2>
+          <h2 className="mb-3 text-[15px] font-bold text-navy-900">{t('Other services that can help')}</h2>
           <div className="space-y-2.5">
             {SIGNPOSTS.slice(0, 3).map((s) => (
               <a key={s.name} href={s.url} target="_blank" rel="noreferrer" className="card flex items-center gap-3 p-4 hover:border-teal-200">
@@ -175,8 +179,8 @@ export default function Summary() {
                   <s.Icon size={18} />
                 </span>
                 <span className="flex-1">
-                  <span className="block text-[14px] font-bold text-navy-900">{s.action}</span>
-                  <span className="block text-[12px] text-muted">{s.name} · separate service</span>
+                  <span className="block text-[14px] font-bold text-navy-900">{t(s.action)}</span>
+                  <span className="block text-[12px] text-muted">{s.name} · {t('separate service')}</span>
                 </span>
                 <ChevronRight size={16} className="text-muted" />
               </a>
@@ -185,7 +189,7 @@ export default function Summary() {
         </Reveal>
 
         <Press onClick={() => navigate('/app')} className="btn-secondary mt-6">
-          <Store size={16} /> Back to home
+          <Store size={16} /> {t('Back to home')}
         </Press>
       </div>
     </div>

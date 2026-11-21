@@ -6,6 +6,7 @@ import type { Medicine } from '../data/types';
 import { candidateWords, findMedicinesInText, preloadOcr, readPackText, spottedTerms, unknownBrandPhrases, type Crop } from '../engine/ocr';
 import { searchRxNorm } from '../engine/rxnorm';
 import { Press } from './ui';
+import { useT } from '../i18n';
 
 type Stage = 'start' | 'camera' | 'reading' | 'results' | 'error';
 
@@ -41,6 +42,7 @@ function guideCrop(v: HTMLVideoElement): Crop | undefined {
 }
 
 export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void; onType: () => void }) {
+  const t = useT();
   const [stage, setStage] = useState<Stage>('start');
   const [progress, setProgress] = useState(0);
   const [photo, setPhoto] = useState<string | null>(null);
@@ -146,8 +148,8 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
 
   return (
     <div className="mt-4">
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} aria-label="Upload a photo of the pack" />
-      <input ref={captureRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} aria-label="Take a photo of the pack" />
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} aria-label={t('Upload a photo of the pack')} />
+      <input ref={captureRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} aria-label={t('Take a photo of the pack')} />
 
       <AnimatePresence mode="wait">
         {stage === 'start' && (
@@ -156,21 +158,21 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
               <div className="absolute inset-6 rounded-2xl border-2 border-dashed border-white/25" />
               <motion.div className="absolute left-6 right-6 h-0.5 bg-teal-500 shadow-[0_0_16px_#14A594]" animate={{ top: ['22%', '78%', '22%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
               <ScanText size={36} className="relative opacity-90" />
-              <div className="relative mt-3 text-[15px] font-bold">Scan the medicine pack</div>
-              <div className="relative mt-1 max-w-[250px] text-[12.5px] text-white/70">Point at the side with the medicine name. The photo is read on this phone and never uploaded.</div>
+              <div className="relative mt-3 text-[15px] font-bold">{t('Scan the medicine pack')}</div>
+              <div className="relative mt-1 max-w-[250px] text-[12.5px] text-white/70">{t('Point at the side with the medicine name. The photo is read on this phone and never uploaded.')}</div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Press onClick={canStream ? openCamera : () => captureRef.current?.click()} className="btn-primary">
-                <Camera size={18} /> Open camera
+                <Camera size={18} /> {t('Open camera')}
               </Press>
               <Press onClick={() => fileRef.current?.click()} className="btn-secondary">
-                <ImageUp size={18} /> Upload photo
+                <ImageUp size={18} /> {t('Upload photo')}
               </Press>
             </div>
             <ul className="mt-4 space-y-1.5 text-[12.5px] text-muted">
-              {['Good light, no glare on the shiny box', 'Fill the frame with the name and strength', 'Hold still for a second'].map((t) => (
-                <li key={t} className="flex items-center gap-2">
-                  <Lightbulb size={13} className="text-teal-600" /> {t}
+              {['Good light, no glare on the shiny box', 'Fill the frame with the name and strength', 'Hold still for a second'].map((tip) => (
+                <li key={tip} className="flex items-center gap-2">
+                  <Lightbulb size={13} className="text-teal-600" /> {t(tip)}
                 </li>
               ))}
             </ul>
@@ -184,7 +186,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute inset-x-6 top-1/2 h-[42%] -translate-y-1/2 rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(14,27,51,0.45)]" />
                 <motion.div className="absolute inset-x-8 h-0.5 bg-teal-500 shadow-[0_0_14px_#14A594]" animate={{ top: ['32%', '68%', '32%'] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
-                <div className="absolute inset-x-0 top-4 text-center text-[12.5px] font-semibold text-white">Fit the medicine name inside the box</div>
+                <div className="absolute inset-x-0 top-4 text-center text-[12.5px] font-semibold text-white">{t('Fit the medicine name inside the box')}</div>
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between">
@@ -195,9 +197,9 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
                 }}
                 className="w-20 text-[13px] font-bold text-muted"
               >
-                Cancel
+                {t('Cancel')}
               </button>
-              <Press onClick={capture} aria-label="Take photo" className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-teal-200 bg-teal-600 shadow-[0_10px_24px_rgba(14,147,132,0.4)]">
+              <Press onClick={capture} aria-label={t('Take photo')} className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-teal-200 bg-teal-600 shadow-[0_10px_24px_rgba(14,147,132,0.4)]">
                 <span className="h-12 w-12 rounded-full border-2 border-white/80" />
               </Press>
               <button
@@ -207,7 +209,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
                 }}
                 className="w-20 text-right text-[13px] font-bold text-teal-700"
               >
-                Upload
+                {t('Upload')}
               </button>
             </div>
           </motion.div>
@@ -216,14 +218,14 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
         {stage === 'reading' && (
           <motion.div key="reading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <div className="relative aspect-[4/3] overflow-hidden rounded-xl3 bg-navy-900">
-              {photo && <img src={photo} alt="Your photo of the pack" className="h-full w-full object-cover opacity-70" />}
+              {photo && <img src={photo} alt={t('Your photo of the pack')} className="h-full w-full object-cover opacity-70" />}
               <motion.div className="absolute inset-x-0 h-16 bg-gradient-to-b from-transparent via-teal-500/40 to-transparent" animate={{ top: ['-10%', '90%'] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }} />
             </div>
-            <div className="mt-4 text-[15px] font-bold text-navy-900">Reading the pack…</div>
+            <div className="mt-4 text-[15px] font-bold text-navy-900">{t('Reading the pack…')}</div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-teal-100">
               <motion.div className="h-full rounded-full bg-teal-600" animate={{ width: `${Math.round(progress * 100)}%` }} transition={{ ease: 'easeOut' }} />
             </div>
-            <div className="mt-1.5 text-[12px] text-muted">{progress < 0.33 ? 'Getting the text reader ready (first time only)' : 'Looking for the medicine name'}</div>
+            <div className="mt-1.5 text-[12px] text-muted">{t(progress < 0.2 ? 'Getting the text reader ready (first time only)' : 'Looking for the medicine name')}</div>
           </motion.div>
         )}
 
@@ -232,29 +234,29 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
             <div className="flex gap-3 rounded-2xl bg-card p-3 shadow-card">
               {photo && <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />}
               <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">We spotted</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">{t('We spotted')}</div>
                 {spotted.length ? (
                   <div className="mt-1 flex flex-wrap gap-1.5">
-                    {spotted.map((t) => (
-                      <span key={t} className="rounded-full bg-teal-100 px-2.5 py-0.5 text-[12px] font-semibold text-teal-800">
-                        {t}
+                    {spotted.map((term) => (
+                      <span key={term} className="rounded-full bg-teal-100 px-2.5 py-0.5 text-[12px] font-semibold text-teal-800">
+                        {term}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-[12.5px] leading-snug text-navy-900">{nothing ? 'No medicine name we could recognise' : 'A medicine name (see below)'}</div>
+                  <div className="text-[12.5px] leading-snug text-navy-900">{t(nothing ? 'No medicine name we could recognise' : 'A medicine name (see below)')}</div>
                 )}
               </div>
             </div>
 
             {nothing ? (
               <div className="mt-5 text-center">
-                <div className="text-[16px] font-bold text-navy-900">{unreadable ? 'The photo was hard to read' : 'We could not find a medicine name'}</div>
-                <p className="mx-auto mt-1 max-w-[290px] text-[13px] text-muted">Hold the pack flat, avoid shine from lights, and fill the box with the medicine name. Or type the name instead.</p>
+                <div className="text-[16px] font-bold text-navy-900">{t(unreadable ? 'The photo was hard to read' : 'We could not find a medicine name')}</div>
+                <p className="mx-auto mt-1 max-w-[290px] text-[13px] text-muted">{t('Hold the pack flat, avoid shine from lights, and fill the box with the medicine name. Or type the name instead.')}</p>
               </div>
             ) : (
               <>
-                <div className="mb-2 mt-5 text-[13px] font-bold text-navy-900">Is it one of these?</div>
+                <div className="mb-2 mt-5 text-[13px] font-bold text-navy-900">{t('Is it one of these?')}</div>
                 <ul className="space-y-2">
                   {[...found.remote, ...found.local].map((m, k) => (
                     <motion.li key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: k * 0.05 } }}>
@@ -279,10 +281,10 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
             )}
             <div className="mt-5 grid grid-cols-2 gap-3">
               <Press onClick={reset} className="btn-secondary">
-                <RotateCcw size={16} /> Scan again
+                <RotateCcw size={16} /> {t('Scan again')}
               </Press>
               <Press onClick={onType} className="btn-secondary">
-                <Keyboard size={16} /> Type it
+                <Keyboard size={16} /> {t('Type it')}
               </Press>
             </div>
           </motion.div>
@@ -290,14 +292,14 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
 
         {stage === 'error' && (
           <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl bg-card p-5 text-center shadow-card">
-            <div className="text-[15px] font-bold text-navy-900">Something went wrong</div>
-            <p className="mt-1 text-[13px] text-muted">{error}</p>
+            <div className="text-[15px] font-bold text-navy-900">{t('Something went wrong')}</div>
+            <p className="mt-1 text-[13px] text-muted">{t(error)}</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Press onClick={reset} className="btn-secondary">
-                Try again
+                {t('Try again')}
               </Press>
               <Press onClick={onType} className="btn-secondary">
-                Type it
+                {t('Type it')}
               </Press>
             </div>
           </motion.div>

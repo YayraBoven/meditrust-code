@@ -13,6 +13,12 @@ export const maxLevel = (levels: RiskLevel[]): RiskLevel =>
 
 const G6PD_UNSURE = new Set(['family-history', 'not-sure', 'never-tested']);
 
+export const G6PD_UNSURE_NOTE =
+  'You are not sure of your G6PD status, so this is a possible risk to discuss, not a diagnosis. Ask a pharmacist whether you should have a G6PD test first.';
+
+/** A message made of fixed sentences, so each one can be translated ahead of time. */
+const said = (parts: string[]) => ({ message: parts.join(' '), parts });
+
 export const CHECK_LABELS: Record<CheckKind, string> = {
   'g6pd-pregnancy': 'G6PD and pregnancy',
   'self-medication': 'Self-medication and your profile',
@@ -47,9 +53,10 @@ function flagFromRule(rule: SafetyRule, p: Profile, med: Medicine): Flag {
       check: 'g6pd-pregnancy',
       level: 'medium',
       title: 'Possible G6PD concern',
-      message: `${rule.message} You are not sure of your G6PD status, so this is a possible risk to discuss, not a diagnosis. Ask a pharmacist whether you should have a G6PD test first.`,
+      ...said([rule.message, G6PD_UNSURE_NOTE]),
       reason: `${rule.id}|g6pd-unknown`,
       ingredient: ingredientName,
+      detail: `${med.brand} · ${ingredientName}`,
     };
   }
   const titles: Record<SafetyRule['factor']['type'], string> = {
@@ -64,9 +71,10 @@ function flagFromRule(rule: SafetyRule, p: Profile, med: Medicine): Flag {
     check: f.type === 'g6pd' || f.type === 'pregnancy' || f.type === 'breastfeeding' ? 'g6pd-pregnancy' : 'self-medication',
     level: rule.level,
     title: titles[f.type],
-    message: rule.message,
+    ...said([rule.message]),
     reason: rule.id,
     ingredient: ingredientName,
+    detail: `${med.brand} · ${ingredientName}`,
   };
 }
 
@@ -84,9 +92,10 @@ function otherAllergyFlags(p: Profile, med: Medicine): Flag[] {
       check: 'self-medication' as const,
       level: 'high' as const,
       title: 'Possible allergy',
-      message: `This medicine contains ${INGREDIENTS[ing].name}, which you listed as an allergy.`,
+      ...said(['This medicine contains an ingredient you listed as an allergy.']),
       reason: `allergy-typed|${ing}`,
       ingredient: INGREDIENTS[ing].name,
+      detail: `${med.brand} · ${INGREDIENTS[ing].name}`,
     }));
 }
 
@@ -99,10 +108,13 @@ function prescriptionFlag(med: Medicine, prescribed: boolean | null): Flag[] {
       check: 'self-medication',
       level: 'medium',
       title: 'Usually needs a prescription',
-      message: isAntibiotic
-        ? `${med.generic} is an antibiotic that usually needs a prescription. Taking antibiotics without one can mean the wrong medicine or dose, and helps germs become resistant.`
-        : `${med.generic} usually needs a prescription, so a pharmacist or doctor should confirm it is right for you.`,
+      ...said(
+        isAntibiotic
+          ? ['This is an antibiotic that usually needs a prescription.', 'Taking antibiotics without one can mean the wrong medicine or dose, and helps germs become resistant.']
+          : ['This medicine usually needs a prescription, so a pharmacist or doctor should confirm it is right for you.'],
+      ),
       reason: 'rx-only-not-prescribed',
+      detail: med.brand,
     },
   ];
 }
@@ -129,11 +141,14 @@ function duplicateFlags(checked: Medicine[], current: Medicine[]): Flag[] {
           check: 'duplicate',
           level: 'medium',
           title: same ? 'You already take this medicine' : 'Same ingredient twice',
-          message: same
-            ? `You listed ${a.m.brand} as a medicine you already take. Taking extra may give you too much ${name}.`
-            : `${a.m.brand} and ${b.m.brand} both contain ${name}. Taking both may give you too much.`,
+          ...said(
+            same
+              ? ['You listed this medicine as one you already take.', 'Taking extra may give you too much of it.']
+              : ['These products contain the same ingredient.', 'Taking both may give you too much.'],
+          ),
           reason: `duplicate|${ing}`,
           ingredient: name,
+          detail: same ? `${a.m.brand} · ${name}` : `${a.m.brand} + ${b.m.brand} · ${name}`,
         });
       }
     }

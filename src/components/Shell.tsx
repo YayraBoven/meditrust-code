@@ -5,6 +5,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { DEMO_CASES } from '../data/demo';
 import { useStartDemo } from '../lib/demo';
 import { Logo } from './ui';
+import { useT } from '../i18n';
 
 const TABS = [
   { to: '/app', label: 'Home', Icon: Home, end: true },
@@ -14,6 +15,7 @@ const TABS = [
 ];
 
 export function BottomNav() {
+  const t = useT();
   return (
     <nav className="sticky bottom-0 z-30 border-t border-line bg-card/95 pb-[max(env(safe-area-inset-bottom),8px)] pt-2 backdrop-blur-md">
       <ul className="flex justify-around">
@@ -26,7 +28,7 @@ export function BottomNav() {
                     {isActive && <motion.span layoutId="tab-pill" className="absolute inset-0 rounded-full bg-teal-100" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
                     <Icon size={20} className={`relative ${isActive ? 'text-teal-700' : 'text-muted'}`} strokeWidth={isActive ? 2.4 : 2} />
                   </span>
-                  <span className={`text-[11px] font-bold ${isActive ? 'text-teal-800' : 'text-muted'}`}>{label}</span>
+                  <span className={`text-[11px] font-bold ${isActive ? 'text-teal-800' : 'text-muted'}`}>{t(label)}</span>
                 </>
               )}
             </NavLink>
@@ -57,9 +59,10 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const wide = useIsWide();
   const navigate = useNavigate();
   const startDemo = useStartDemo();
+  const t = useT();
 
   if (!wide) {
-    return <div className="mx-auto flex h-[100dvh] max-w-[520px] flex-col overflow-hidden bg-canvas">{children}</div>;
+    return <div className="relative mx-auto flex h-[100dvh] max-w-[520px] flex-col overflow-hidden bg-canvas">{children}</div>;
   }
 
   return (
@@ -69,15 +72,15 @@ export function AppFrame({ children }: { children: ReactNode }) {
           <button onClick={() => navigate('/')} className="mb-10" aria-label="MediTrust home page">
             <Logo size={40} />
           </button>
-          <div className="eyebrow mb-4">High-fidelity prototype</div>
+          <div className="eyebrow mb-4">{t('High-fidelity prototype')}</div>
           <h1 className="text-[44px] font-extrabold leading-[1.05] tracking-tight text-navy-900">
             Check <em className="font-semibold not-italic text-teal-600 [font-style:italic]">before</em> you take it.
           </h1>
           <p className="mt-5 text-[16px] leading-relaxed text-muted">
-            MediTrust compares a medicine with your own health profile, explains any risk in plain words, and sends you to a pharmacist or doctor. Try it in the phone, or open this page on your phone and add it to your home screen.
+            {t('MediTrust compares a medicine with your own health profile, explains any risk in plain words, and sends you to a pharmacist or doctor. Try it in the phone, or open this page on your phone and add it to your home screen.')}
           </p>
           <div className="mt-8">
-            <div className="mb-3 text-[13px] font-bold text-navy-900">Run a demo patient</div>
+            <div className="mb-3 text-[13px] font-bold text-navy-900">{t('Run a demo patient')}</div>
             <div className="grid grid-cols-2 gap-3">
               {DEMO_CASES.map((d) => (
                 <motion.button
@@ -94,14 +97,14 @@ export function AppFrame({ children }: { children: ReactNode }) {
             </div>
           </div>
           <p className="mt-8 text-[12px] leading-relaxed text-muted">
-            Decision support only. Medicine names, brands and rules in this prototype are illustrative and must be reviewed by a pharmacist.
+            {t('Decision support only. Medicine names, brands and rules in this prototype are illustrative and must be reviewed by a pharmacist.')}
           </p>
         </div>
 
         <div className="relative">
           <div className="relative h-[844px] w-[400px] rounded-[56px] border-[10px] border-navy-900 bg-navy-900 shadow-phone">
             <div className="absolute left-1/2 top-3 z-50 h-[30px] w-[110px] -translate-x-1/2 rounded-full bg-navy-900" />
-            <div className="flex h-full flex-col overflow-hidden rounded-[46px] bg-canvas [transform:translateZ(0)]">
+            <div className="relative flex h-full flex-col overflow-hidden rounded-[46px] bg-canvas [transform:translateZ(0)]">
               <div className="flex h-11 shrink-0 items-center justify-between px-8 text-[13px] font-bold text-navy-900" aria-hidden="true">
                 <span>9:41</span>
                 <span className="flex items-center gap-1.5">

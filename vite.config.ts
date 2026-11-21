@@ -1,12 +1,49 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // `base` is './' so the build works from any sub-path (e.g. GitHub Pages).
+/**
+ * Local stand-in for the Vercel function api/tts.ts, so "Listen" works with
+ * `npm run dev` / `npm run preview` when KHAYA_API_KEY is set in .env.local.
+ */
+function localTts(): Plugin {
+  const handler = async (req: import('http').IncomingMessage, res: import('http').ServerResponse, next: () => void) => {
+    if (req.url?.split('?')[0] !== '/api/tts' || req.method !== 'POST') return next();
+    const env = loadEnv('development', process.cwd(), '');
+    const key = env.KHAYA_API_KEY || process.env.KHAYA_API_KEY;
+    if (!key) {
+      res.statusCode = 503;
+      return res.end('Set KHAYA_API_KEY in .env.local to use text-to-speech locally.');
+    }
+    const chunks: Buffer[] = [];
+    for await (const c of req) chunks.push(c as Buffer);
+    const { text, language } = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+    if (process.env.HTTPS_PROXY) {
+      const { ProxyAgent, setGlobalDispatcher } = await import('undici');
+      setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
+    }
+    const up = await fetch('https://translation-api.ghananlp.org/tts/v1/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Ocp-Apim-Subscription-Key': key },
+      body: JSON.stringify({ text, language, speaker_id: 'female' }),
+    });
+    res.statusCode = up.ok ? 200 : 502;
+    res.setHeader('Content-Type', up.headers.get('Content-Type') ?? 'audio/wav');
+    res.end(Buffer.from(await up.arrayBuffer()));
+  };
+  return {
+    name: 'local-tts',
+    configureServer: (server) => void server.middlewares.use(handler),
+    configurePreviewServer: (server) => void server.middlewares.use(handler),
+  };
+}
+
 export default defineConfig({
   base: './',
   plugins: [
     react(),
+    localTts(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/icon.svg'],

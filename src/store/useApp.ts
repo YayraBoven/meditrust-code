@@ -3,6 +3,7 @@ import { createJSONStorage, persist, type StateStorage } from 'zustand/middlewar
 import { EMPTY_PROFILE } from '../data/demo';
 import { registerExternal } from '../data/medicines';
 import type { CheckResult, Medicine, Profile } from '../data/types';
+import type { Lang } from '../i18n';
 
 export interface HistoryEntry {
   id: string;
@@ -27,6 +28,8 @@ interface AppState {
   /** Medicines found in RxNorm, kept so past checks still show their names. */
   externals: Medicine[];
   addExternal: (m: Medicine) => void;
+  lang: Lang;
+  setLang: (l: Lang) => void;
   setOnboarded: (v: boolean) => void;
   setConsent: (v: boolean) => void;
   setProfile: (p: Profile) => void;
@@ -76,6 +79,8 @@ export const useApp = create<AppState>()(
       draft: EMPTY_DRAFT,
       demoId: null,
       externals: [],
+      lang: 'en',
+      setLang: (lang) => set({ lang }),
       addExternal: (m) => {
         registerExternal(m);
         if (!get().externals.some((e) => e.id === m.id)) set({ externals: [...get().externals, m].slice(-100) });

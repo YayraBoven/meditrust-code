@@ -32,23 +32,32 @@ export const LEVEL_COPY: Record<DisplayLevel, { label: string; headline: string;
   },
 };
 
-export function flagSentence(flag: Flag): string {
-  return flag.message;
+type T = (english: string) => string;
+const same: T = (x) => x;
+
+/** A flag's message in the reader's language (each fixed sentence translated). */
+export function flagText(flag: Flag, t: T = same): string {
+  return (flag.parts ?? [flag.message]).map(t).join(' ');
 }
 
+export const NOT_SAFE_NOTE = 'Do not start or stop any medicine on your own.';
+export const MORE_POINTS = 'We also found other points to discuss.';
+export const NO_CONCERN = "We did not find a concern in MediTrust's checks. If you are unsure, ask a pharmacist.";
+export const UNVERIFIED_NOTE = 'We identified this medicine, but MediTrust does not yet have verified safety information for it, so we cannot say whether it suits you.';
+
 /** The single message a user (or pharmacist) reads. Always ends with the referral. */
-export function composeWarning(result: CheckResult, firstName?: string): string {
+export function composeWarning(result: CheckResult, firstName?: string, t: T = same): string {
   const name = firstName?.trim() ? `${firstName.trim()}, ` : '';
   if (!result.flags.length) {
     if (displayLevel(result) === 'unverified') {
       const list = (result.unassessed ?? []).join(', ');
-      return `${name}we identified this medicine (${list}), but MediTrust does not yet have verified safety information for it, so we cannot say whether it suits you. ${REFERRAL}`;
+      return `${name}${t(UNVERIFIED_NOTE)} (${list}) ${t(REFERRAL)}`;
     }
-    return `${name}we did not find a concern in MediTrust's checks. If you are unsure, ask a pharmacist.`;
+    return `${name}${t(NO_CONCERN)}`;
   }
-  const top = result.flags[0];
-  const more = result.flags.length > 1 ? ` We also found ${result.flags.length - 1} other point${result.flags.length > 2 ? 's' : ''} to discuss.` : '';
-  return `${name}${top.message}${more} Do not start or stop any medicine on your own. ${REFERRAL}`;
+  const top = flagText(result.flags[0], t);
+  const more = result.flags.length > 1 ? ` ${t(MORE_POINTS)}` : '';
+  return `${name}${top}${more} ${t(NOT_SAFE_NOTE)} ${t(REFERRAL)}`;
 }
 
 const BANNED = [/\bstop taking\b/i, /\bit is safe\b/i, /\bsafe to take\b/i, /(?<!not a )\bdiagnos(e|is)\b/i, /\binstead take\b/i, /\bswitch to\b/i, /\byou have g6pd deficiency\b/i];

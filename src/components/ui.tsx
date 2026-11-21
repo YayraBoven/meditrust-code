@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DisplayLevel } from '../data/types';
 import { LEVEL_COPY } from '../engine/explain';
+import { useT } from '../i18n';
 
 export function Logo({ size = 36, withText = true }: { size?: number; withText?: boolean }) {
   return (
@@ -48,18 +49,19 @@ export function Press({ children, className, ...rest }: HTMLMotionProps<'button'
 
 export function StepHeader({ step, total = 5, onBack, label }: { step?: number; total?: number; onBack?: () => void; label?: string }) {
   const navigate = useNavigate();
+  const t = useT();
   return (
     <div className="sticky top-0 z-20 bg-canvas/85 pb-3 pt-[max(env(safe-area-inset-top),14px)] backdrop-blur-md">
       <div className="flex items-center justify-between px-5">
         <Press
-          aria-label="Go back"
+          aria-label={t('Go back')}
           onClick={onBack ?? (() => navigate(-1))}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-card text-navy-900 shadow-card"
         >
           <ArrowLeft size={18} />
         </Press>
-        {label && <div className="text-[13px] font-bold text-navy-900">{label}</div>}
-        {step ? <div className="text-[12px] font-bold text-muted">{step} of {total}</div> : <div className="w-10" />}
+        {label && <div className="text-[13px] font-bold text-navy-900">{t(label)}</div>}
+        {step ? <div className="text-[12px] font-bold text-muted">{step} / {total}</div> : <div className="w-10" />}
       </div>
       {step && (
         <div className="mt-3 flex gap-1.5 px-5" aria-hidden="true">
@@ -87,12 +89,13 @@ const RISK_STYLE: Record<DisplayLevel, { wrap: string; dot: string; Icon: typeof
 };
 
 export function RiskBadge({ level, size = 'sm' }: { level: DisplayLevel; size?: 'sm' | 'lg' }) {
+  const t = useT();
   const s = RISK_STYLE[level];
   const Icon = s.Icon;
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border font-bold ${s.wrap} ${size === 'lg' ? 'px-3.5 py-1.5 text-[13px]' : 'px-2.5 py-1 text-[11.5px]'}`}>
       <Icon size={size === 'lg' ? 15 : 13} strokeWidth={2.4} />
-      {LEVEL_COPY[level].label}
+      {t(LEVEL_COPY[level].label)}
     </span>
   );
 }
@@ -100,12 +103,13 @@ export function RiskBadge({ level, size = 'sm' }: { level: DisplayLevel; size?: 
 export const riskStyle = RISK_STYLE;
 
 export function Note({ title = 'Illustrative information', children }: { title?: string; children: ReactNode }) {
+  const t = useT();
   return (
     <div className="flex gap-3 rounded-2xl border border-note-line/60 bg-note-bg p-3.5">
       <Info size={16} className="mt-0.5 shrink-0 text-note-ink" />
       <div className="text-[12.5px] leading-relaxed text-note-ink">
-        <div className="font-bold">{title}</div>
-        <div className="opacity-90">{children}</div>
+        <div className="font-bold">{t(title)}</div>
+        <div className="opacity-90">{typeof children === 'string' ? t(children) : children}</div>
       </div>
     </div>
   );
@@ -128,18 +132,20 @@ export function Chip({ on, children, onClick }: { on: boolean; children: ReactNo
 }
 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  const t = useT();
   return (
     <div className="mb-3 flex items-center justify-between">
-      <h2 className="text-[15px] font-bold text-navy-900">{children}</h2>
+      <h2 className="text-[15px] font-bold text-navy-900">{typeof children === 'string' ? t(children) : children}</h2>
       {action}
     </div>
   );
 }
 
 export function Disclaimer() {
+  const t = useT();
   return (
     <p className="px-1 text-center text-[11.5px] leading-relaxed text-muted">
-      MediTrust gives decision support only. It does not diagnose, prescribe or replace a pharmacist or doctor.
+      {t('MediTrust gives decision support only. It does not diagnose, prescribe or replace a pharmacist or doctor.')}
     </p>
   );
 }

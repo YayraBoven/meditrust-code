@@ -5,30 +5,29 @@ import { useNavigate } from 'react-router-dom';
 import { Logo, Press } from '../components/ui';
 import { DEMO_CASES } from '../data/demo';
 import { useStartDemo } from '../lib/demo';
+import { LanguagePicker } from '../components/LanguagePicker';
+import { useT } from '../i18n';
 import { useApp } from '../store/useApp';
 
 const SLIDES = [
   {
     eyebrow: 'Medicine safety, made personal',
-    title: (
-      <>
-        Your health.
-        <br />
-        <span className="text-teal-600">Your safety.</span>
-      </>
-    ),
+    title: 'Your health.',
+    accent: 'Your safety.',
     body: 'Check a medicine against your own health profile before you take it.',
     Icon: ShieldCheck,
   },
   {
     eyebrow: 'Three checks in seconds',
-    title: <>G6PD and pregnancy. Self-medication. Same ingredient twice.</>,
+    title: 'G6PD and pregnancy. Self-medication. Same ingredient twice.',
+    accent: '',
     body: 'Clear rules decide the risk. MediTrust explains it in plain words and tells you who to ask.',
     Icon: ScanSearch,
   },
   {
     eyebrow: 'A pharmacist decides',
-    title: <>We flag. Your pharmacist or doctor decides.</>,
+    title: 'We flag. Your pharmacist or doctor decides.',
+    accent: '',
     body: 'MediTrust never diagnoses, prescribes or tells you to stop a medicine. Show your summary at the counter.',
     Icon: Stethoscope,
   },
@@ -42,6 +41,7 @@ export default function Welcome() {
   const navigate = useNavigate();
   const startDemo = useStartDemo();
   const { setConsent, setOnboarded } = useApp();
+  const t = useT();
   const last = i === SLIDES.length - 1;
   const slide = SLIDES[i];
 
@@ -51,11 +51,14 @@ export default function Welcome() {
     <div className="no-scrollbar relative flex h-full flex-col overflow-y-auto bg-[radial-gradient(500px_300px_at_100%_0%,#DDF2EF,transparent_70%)] px-6 pb-[max(env(safe-area-inset-bottom),20px)] pt-[max(env(safe-area-inset-top),24px)]">
       <div className="flex items-center justify-between">
         <Logo />
-        {stage === 'slides' && (
-          <button onClick={() => setStage('consent')} className="text-[13px] font-bold text-muted hover:text-navy-900">
-            Skip
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <LanguagePicker />
+          {stage === 'slides' && (
+            <button onClick={() => setStage('consent')} className="text-[13px] font-bold text-muted hover:text-navy-900">
+              {t('Skip')}
+            </button>
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">
@@ -95,9 +98,17 @@ export default function Welcome() {
                   <slide.Icon size={44} strokeWidth={2} />
                 </motion.div>
               </div>
-              <div className="eyebrow mb-3">{slide.eyebrow}</div>
-              <h1 className="text-[32px] font-extrabold leading-[1.1] tracking-tight text-navy-900">{slide.title}</h1>
-              <p className="mt-4 text-[15px] leading-relaxed text-muted">{slide.body}</p>
+              <div className="eyebrow mb-3">{t(slide.eyebrow)}</div>
+              <h1 className="text-[32px] font-extrabold leading-[1.1] tracking-tight text-navy-900">
+                {t(slide.title)}
+                {slide.accent && (
+                  <>
+                    <br />
+                    <span className="text-teal-600">{t(slide.accent)}</span>
+                  </>
+                )}
+              </h1>
+              <p className="mt-4 text-[15px] leading-relaxed text-muted">{t(slide.body)}</p>
             </motion.div>
 
             <div className="flex items-center justify-between pb-4">
@@ -109,11 +120,11 @@ export default function Welcome() {
                 ))}
               </div>
               <Press onClick={next} className="flex items-center gap-1.5 rounded-2xl bg-teal-600 px-5 py-3.5 text-[15px] font-bold text-white shadow-[0_8px_20px_rgba(14,147,132,0.28)]">
-                {last ? 'Get started' : 'Next'} <ChevronRight size={18} />
+                {last ? t('Get started') : t('Next')} <ChevronRight size={18} />
               </Press>
             </div>
             <button onClick={() => setShowDemos(true)} className="pb-2 text-center text-[13px] font-bold text-teal-700 underline-offset-4 hover:underline">
-              Presenting? Try a demo patient
+              {t('Presenting? Try a demo patient')}
             </button>
           </motion.div>
         ) : (
@@ -121,24 +132,24 @@ export default function Welcome() {
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
               <Lock size={26} />
             </div>
-            <h1 className="mt-6 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">Your health details stay on this phone</h1>
-            <p className="mt-3 text-[15px] leading-relaxed text-muted">To check medicines for you, MediTrust asks about your age, allergies, conditions, current medicines, pregnancy and G6PD status.</p>
+            <h1 className="mt-6 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Your health details stay on this phone')}</h1>
+            <p className="mt-3 text-[15px] leading-relaxed text-muted">{t('To check medicines for you, MediTrust asks about your age, allergies, conditions, current medicines, pregnancy and G6PD status.')}</p>
             <ul className="mt-6 space-y-3">
               {[
                 'Saved only on this device. No account, nothing sent to a server.',
                 'Nothing is shared unless you tap Share.',
                 'You can edit or delete your profile at any time.',
                 'Handled in the spirit of Ghana’s Data Protection Act, 2012 (Act 843).',
-              ].map((t, k) => (
-                <motion.li key={t} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + k * 0.07 }} className="flex gap-3 text-[14px] leading-snug text-navy-900">
+              ].map((line, k) => (
+                <motion.li key={line} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + k * 0.07 }} className="flex gap-3 text-[14px] leading-snug text-navy-900">
                   <ShieldCheck size={18} className="mt-0.5 shrink-0 text-teal-600" />
-                  {t}
+                  {t(line)}
                 </motion.li>
               ))}
             </ul>
             <label className="mt-8 flex cursor-pointer items-start gap-3 rounded-2xl border border-line bg-card p-4 shadow-card">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 accent-teal-600" />
-              <span className="text-[14px] leading-snug text-navy-900">I agree to MediTrust using my health details on this phone to check medicines for me.</span>
+              <span className="text-[14px] leading-snug text-navy-900">{t('I agree to MediTrust using my health details on this phone to check medicines for me.')}</span>
             </label>
             <div className="mt-auto space-y-3 pt-8">
               <Press
@@ -150,10 +161,10 @@ export default function Welcome() {
                 }}
                 className="btn-primary"
               >
-                Build my health profile
+                {t('Build my health profile')}
               </Press>
               <button onClick={() => setShowDemos(true)} className="w-full py-2 text-[13px] font-bold text-teal-700">
-                Try a demo patient instead
+                {t('Try a demo patient instead')}
               </button>
             </div>
           </motion.div>
@@ -172,8 +183,8 @@ export default function Welcome() {
               className="w-full rounded-t-[28px] bg-card p-6 pb-[max(env(safe-area-inset-bottom),24px)]"
             >
               <div className="mx-auto mb-5 h-1.5 w-10 rounded-full bg-line" />
-              <h2 className="text-[18px] font-extrabold text-navy-900">Demo patients</h2>
-              <p className="mb-4 mt-1 text-[13px] text-muted">The four scenarios from the team document. Each loads a profile and a medicine to check.</p>
+              <h2 className="text-[18px] font-extrabold text-navy-900">{t('Demo patients')}</h2>
+              <p className="mb-4 mt-1 text-[13px] text-muted">{t('The four scenarios from the team document. Each loads a profile and a medicine to check.')}</p>
               <div className="space-y-2.5">
                 {DEMO_CASES.map((d) => (
                   <Press key={d.id} onClick={() => startDemo(d.id)} className="flex w-full items-center justify-between rounded-2xl border border-line p-4 text-left hover:border-teal-200 hover:bg-teal-50">

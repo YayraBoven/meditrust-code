@@ -71,6 +71,10 @@ export interface Flag {
   title: string;
   /** Plain-language explanation produced from the rule (never by AI). */
   message: string;
+  /** The fixed sentences that make up `message`, translated one by one. */
+  parts?: string[];
+  /** Names shown under the message (medicine, ingredient); never translated. */
+  detail?: string;
   /** Short reason code, kept in the audit log. */
   reason: string;
   ingredient?: string;

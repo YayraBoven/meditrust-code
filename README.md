@@ -24,3 +24,16 @@ npm run build    # production build in dist/ (installable PWA)
 - `src/data/rules.ts`: the safety rules table that decides every flag (pending pharmacist review).
 - `src/engine/checks.ts`: the three checks (G6PD and pregnancy, self-medication, duplicate ingredient).
 - `src/engine/explain.ts`: plain-language wording and the safety filter for any generated text.
+
+## Languages (Twi, Ewe, Ga, Dagbani)
+
+- All app text goes through `t()` (`src/i18n/index.ts`); translations are keyed by the English sentence and
+  stored in `src/i18n/<lang>.json`. Missing translations fall back to English.
+- `npx tsx scripts/translate.ts --extract-only` lists every sentence (`src/i18n/strings.json`).
+- `KHAYA_API_KEY=... npx tsx scripts/translate.ts` machine-translates missing sentences with GhanaNLP Khaya
+  (watch the plan's monthly quota).
+- Review sheets for fluent speakers: `docs/translations/<lang>.csv` (open in Excel or Google Sheets).
+  Fill the "Correction or new translation" column, save as CSV, then run `npx tsx scripts/translate.ts --import`.
+- "Listen" in local languages uses Khaya text-to-speech through the Vercel function `api/tts.ts`.
+  Set `KHAYA_API_KEY` in Vercel → Project → Settings → Environment Variables (and in `.env.local` for local dev).
+  The key is never sent to the browser.

@@ -10,6 +10,7 @@ import { CHECK_LABELS, runChecks } from '../engine/checks';
 import { CONFIDENT } from '../engine/match';
 import { useMedicineSearch } from '../lib/useMedicineSearch';
 import { useApp } from '../store/useApp';
+import { useT } from '../i18n';
 
 /* ------------------------------------------------------------------ */
 /* Step 1 · Enter a medicine                                           */
@@ -31,6 +32,7 @@ function getSpeech(): SpeechCtor | null {
 }
 
 export function CheckInput() {
+  const t = useT();
   const navigate = useNavigate();
   const { draft, setDraft, addExternal } = useApp();
   const [q, setQ] = useState(draft.query);
@@ -86,9 +88,9 @@ export function CheckInput() {
       <StepHeader step={1} onBack={() => navigate('/app')} />
       <div className="flex flex-1 flex-col px-5 pb-6">
         <Reveal>
-          <div className="eyebrow">Step 1 · Your medicine</div>
-          <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">Which medicine would you like to check?</h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-muted">Type the name on the pack. A brand name or the medicine inside both work.</p>
+          <div className="eyebrow">{t('Step 1 · Your medicine')}</div>
+          <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Which medicine would you like to check?')}</h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Type the name on the pack. A brand name or the medicine inside both work.')}</p>
         </Reveal>
 
         <Reveal i={1} className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-teal-100/60 p-1">
@@ -102,7 +104,7 @@ export function CheckInput() {
             <button key={id} onClick={() => setMode(id)} className="relative flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-bold">
               {mode === id && <motion.span layoutId="mode-pill" className="absolute inset-0 rounded-xl bg-card shadow-card" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
               <Icon size={15} className={`relative ${mode === id ? 'text-teal-700' : 'text-muted'}`} />
-              <span className={`relative ${mode === id ? 'text-navy-900' : 'text-muted'}`}>{label}</span>
+              <span className={`relative ${mode === id ? 'text-navy-900' : 'text-muted'}`}>{t(label)}</span>
             </button>
           ))}
         </Reveal>
@@ -122,14 +124,14 @@ export function CheckInput() {
                   ref={inputRef}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="e.g. ibuprofen, Paracare, cold and flu"
+                  placeholder={t('e.g. ibuprofen, Paracare, cold and flu')}
                   className="field py-4 pl-11 pr-11 text-[16px]"
-                  aria-label="Medicine name"
+                  aria-label={t('Medicine name')}
                   autoComplete="off"
                   enterKeyHint="search"
                 />
                 {q && (
-                  <button type="button" aria-label="Clear" onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted hover:bg-canvas">
+                  <button type="button" aria-label={t('Clear')} onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted hover:bg-canvas">
                     <X size={16} />
                   </button>
                 )}
@@ -158,7 +160,7 @@ export function CheckInput() {
               {q.trim().length >= 3 && remoteState !== 'idle' && (
                 <div className="mt-4">
                   <div className="mb-2 flex items-center gap-1.5 text-[11.5px] font-bold uppercase tracking-wider text-muted">
-                    <Globe size={13} /> Wider medicine database
+                    <Globe size={13} /> {t('Wider medicine database')}
                   </div>
                   {remoteState === 'loading' && (
                     <div className="space-y-2">
@@ -171,16 +173,16 @@ export function CheckInput() {
                           </span>
                         </div>
                       ))}
-                      <p className="text-[12px] text-muted">Searching RxNorm (U.S. National Library of Medicine)…</p>
+                      <p className="text-[12px] text-muted">{t('Searching RxNorm (U.S. National Library of Medicine)…')}</p>
                     </div>
                   )}
                   {remoteState === 'offline' && (
                     <div className="flex items-center gap-2 rounded-2xl bg-card p-3.5 text-[12.5px] text-muted shadow-card">
-                      <WifiOff size={16} /> Could not reach the wider database. Check your internet connection.
+                      <WifiOff size={16} /> {t('Could not reach the wider database. Check your internet connection.')}
                     </div>
                   )}
                   {remoteState === 'done' && remote.length === 0 && results.length === 0 && (
-                    <p className="text-[12.5px] text-muted">No match in the wider database either.</p>
+                    <p className="text-[12.5px] text-muted">{t('No match in the wider database either.')}</p>
                   )}
                   {remoteState === 'done' && remote.length > 0 && (
                     <ul className="space-y-2">
@@ -205,13 +207,13 @@ export function CheckInput() {
               {q.trim().length >= 2 && results.length === 0 && remote.length === 0 && remoteState !== 'loading' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3">
                   <Press onClick={submit} className="btn-secondary">
-                    Search for “{q.trim()}”
+                    {t('Search')}: “{q.trim()}”
                   </Press>
                 </motion.div>
               )}
               {!q && (
                 <div className="mt-4">
-                  <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-muted">Try</div>
+                  <div className="mb-2 text-[12px] font-bold uppercase tracking-wider text-muted">{t('Try')}</div>
                   <div className="flex flex-wrap gap-2">
                     {['ibuprofen', 'doxycycline', 'primaquine', 'ColdAway', 'magnesium glycinate'].map((s) => (
                       <button key={s} onClick={() => setQ(s)} className="rounded-full border border-line bg-card px-3 py-1.5 text-[12.5px] font-semibold text-navy-900 hover:border-teal-200">
@@ -232,19 +234,19 @@ export function CheckInput() {
 
           {mode === 'voice' && (
             <motion.div key="voice" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mt-6 flex flex-col items-center text-center">
-              <Press onClick={listen} disabled={!Speech || listening} aria-label="Start speaking" className="relative flex h-28 w-28 items-center justify-center rounded-full bg-teal-600 text-white shadow-[0_18px_40px_rgba(14,147,132,0.35)] disabled:opacity-60">
+              <Press onClick={listen} disabled={!Speech || listening} aria-label={t('Start speaking')} className="relative flex h-28 w-28 items-center justify-center rounded-full bg-teal-600 text-white shadow-[0_18px_40px_rgba(14,147,132,0.35)] disabled:opacity-60">
                 {listening && <motion.span className="absolute inset-0 rounded-full bg-teal-500" animate={{ scale: [1, 1.5], opacity: [0.5, 0] }} transition={{ duration: 1.2, repeat: Infinity }} />}
                 <Mic size={40} className="relative" />
               </Press>
-              <div className="mt-5 text-[15px] font-bold text-navy-900">{listening ? 'Listening…' : Speech ? 'Tap and say the medicine name' : 'Voice input is not available on this browser'}</div>
-              <div className="mt-1 max-w-[260px] text-[12.5px] text-muted">English for now. Twi, Ewe, Ga and Dagbani are planned for a later version.</div>
+              <div className="mt-5 text-[15px] font-bold text-navy-900">{t(listening ? 'Listening…' : Speech ? 'Tap and say the medicine name' : 'Voice input is not available on this browser')}</div>
+              <div className="mt-1 max-w-[260px] text-[12.5px] text-muted">{t('Voice input works in English for now. Say the name as it is printed on the pack.')}</div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {added.length > 0 && (
           <div className="mt-auto pt-6">
-            <div className="mb-2 text-[12.5px] font-bold text-navy-900">Checking together</div>
+            <div className="mb-2 text-[12.5px] font-bold text-navy-900">{t('Checking together')}</div>
             <div className="mb-3 flex flex-wrap gap-2">
               {added.map((m) => (
                 <span key={m.id} className="inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-3 py-1.5 text-[13px] font-semibold text-teal-800">
@@ -253,7 +255,7 @@ export function CheckInput() {
               ))}
             </div>
             <Press onClick={() => navigate('/app/check/prescribed')} className="btn-primary">
-              Continue with {added.length} medicine{added.length > 1 ? 's' : ''}
+              {t('Continue')} ({added.length})
             </Press>
           </div>
         )}
@@ -279,6 +281,7 @@ const SOURCE_NOTE: Record<NonNullable<Medicine['source']>, string> = {
 };
 
 function PackArt({ m }: { m: Medicine }) {
+  const t = useT();
   return (
     <motion.div
       initial={{ rotateX: 18, y: 16, opacity: 0 }}
@@ -289,12 +292,12 @@ function PackArt({ m }: { m: Medicine }) {
       <div className="absolute inset-y-0 left-0 w-24 -skew-x-12 bg-teal-600" style={{ left: -28 }} />
       <div className="absolute inset-y-0 w-6 -skew-x-12 bg-navy-900" style={{ left: 66 }} />
       <div className="relative ml-24">
-        <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-note-ink">{SOURCE_TAG[m.source ?? 'demo']}</div>
+        <div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-note-ink">{t(SOURCE_TAG[m.source ?? 'demo'])}</div>
         <div className="mt-1 text-[24px] font-extrabold leading-tight tracking-tight text-teal-700">{m.brand}</div>
         <div className="mt-1 text-[12.5px] font-semibold text-navy-900">
           {[m.strength, m.form].filter(Boolean).join(' · ')}
         </div>
-        <div className="mt-4 text-[10.5px] text-muted">{m.source === 'rxnorm' ? 'Source: RxNorm (NLM)' : 'For prototype use only'}</div>
+        <div className="mt-4 text-[10.5px] text-muted">{m.source === 'rxnorm' ? 'RxNorm (NLM)' : t('For prototype use only')}</div>
       </div>
       <motion.div
         className="absolute bottom-4 right-5 h-5 w-12 rounded-full bg-gradient-to-r from-teal-500 from-50% to-white to-50% shadow"
@@ -306,6 +309,7 @@ function PackArt({ m }: { m: Medicine }) {
 }
 
 export function Confirm() {
+  const t = useT();
   const navigate = useNavigate();
   const { draft, setDraft } = useApp();
   const m = draft.pendingId ? medicineById(draft.pendingId) : undefined;
@@ -313,7 +317,7 @@ export function Confirm() {
     return (
       <div className="flex flex-1 flex-col">
         <StepHeader step={2} />
-        <div className="p-6 text-muted">Nothing to confirm yet.</div>
+        <div className="p-6 text-muted">{t('Nothing to confirm yet.')}</div>
       </div>
     );
   }
@@ -326,9 +330,9 @@ export function Confirm() {
       <StepHeader step={2} />
       <div className="px-5 pb-6">
         <Reveal>
-          <div className="eyebrow">Please review</div>
-          <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">Confirm your medicine</h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-muted">We found a possible match. Please check these details before continuing.</p>
+          <div className="eyebrow">{t('Please review')}</div>
+          <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Confirm your medicine')}</h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('We found a possible match. Please check these details before continuing.')}</p>
         </Reveal>
         <div className="mt-5 [perspective:900px]">
           <PackArt m={m} />
@@ -336,7 +340,7 @@ export function Confirm() {
         <Reveal i={2} className="card mt-4 p-5">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">Possible match</div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted">{t('Possible match')}</div>
               <div className="mt-1 text-[19px] font-extrabold text-navy-900">{m.generic}</div>
             </div>
             <Pill size={20} className="text-teal-600" />
@@ -346,35 +350,35 @@ export function Confirm() {
             {[
               ['Brand', m.brand],
               ['Active ingredient', ingredientNames(m).join(' + ')],
-              ['Strength', m.strength || 'Not listed'],
+              ['Strength', m.strength || t('Not listed')],
               ['Form', m.form],
             ].map(([k, v]) => (
               <div key={k}>
-                <dt className="text-[12px] text-muted">{k}</dt>
+                <dt className="text-[12px] text-muted">{t(k)}</dt>
                 <dd className="text-[14px] font-bold text-navy-900">{v}</dd>
               </div>
             ))}
           </dl>
           <div className="mt-4 flex items-center gap-2 text-[12.5px] text-muted">
             <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${m.prescriptionOnly === null ? 'bg-canvas text-muted' : m.prescriptionOnly ? 'bg-navy-900 text-white' : 'bg-teal-100 text-teal-800'}`}>
-              {m.prescriptionOnly === null ? 'Prescription status unknown' : m.prescriptionOnly ? 'Prescription only' : 'Over the counter'}
+              {t(m.prescriptionOnly === null ? 'Prescription status unknown' : m.prescriptionOnly ? 'Prescription only' : 'Over the counter')}
             </span>
-            {INGREDIENTS[m.ingredients[0]]?.kind}
+            {t(INGREDIENTS[m.ingredients[0]]?.kind ?? '')}
           </div>
         </Reveal>
         <Reveal i={3} className="mt-4">
-          <Note title={m.source === 'rxnorm' ? 'Found in a wider database' : 'Illustrative information'}>{SOURCE_NOTE[m.source ?? 'demo']}</Note>
+          <Note title={m.source === 'rxnorm' ? 'Found in a wider database' : 'Illustrative information'}>{t(SOURCE_NOTE[m.source ?? 'demo'])}</Note>
         </Reveal>
         <Reveal i={4} className="mt-6 space-y-3">
-          <div className="text-center text-[15px] font-semibold text-navy-900">Is this the correct medicine?</div>
+          <div className="text-center text-[15px] font-semibold text-navy-900">{t('Is this the correct medicine?')}</div>
           <Press onClick={yes} className="btn-primary">
-            <CheckIcon size={18} strokeWidth={3} /> Yes, this is my medicine
+            <CheckIcon size={18} strokeWidth={3} /> {t('Yes, this is my medicine')}
           </Press>
           <Press onClick={() => navigate('/app/check')} className="btn-secondary">
-            No, try again
+            {t('No, try again')}
           </Press>
           <button onClick={() => navigate('/app/check/no-match')} className="w-full py-1 text-[13px] font-semibold text-muted underline underline-offset-4">
-            I cannot confirm the medicine
+            {t('I cannot confirm the medicine')}
           </button>
         </Reveal>
       </div>
@@ -387,6 +391,7 @@ export function Confirm() {
 /* ------------------------------------------------------------------ */
 
 export function NoMatch() {
+  const t = useT();
   const navigate = useNavigate();
   const { draft } = useApp();
   return (
@@ -398,21 +403,22 @@ export function NoMatch() {
             <Stethoscope size={42} />
           </motion.div>
           <Reveal i={1}>
-            <h1 className="mt-6 text-[26px] font-extrabold leading-tight tracking-tight text-navy-900">We could not confirm this medicine</h1>
+            <h1 className="mt-6 text-[26px] font-extrabold leading-tight tracking-tight text-navy-900">{t('We could not confirm this medicine')}</h1>
             <p className="mx-auto mt-3 max-w-[300px] text-[14.5px] leading-relaxed text-muted">
-              {draft.query ? <>“{draft.query}” is not in our list. </> : null}For your safety, we cannot complete the check. Please show the medicine to a pharmacist.
+              {draft.query ? <>“{draft.query}”. </> : null}
+              {t('For your safety, we cannot complete the check. Please show the medicine to a pharmacist.')}
             </p>
           </Reveal>
           <Reveal i={2} className="mt-4 rounded-2xl bg-card px-4 py-3 text-[12.5px] text-muted shadow-card">
-            No safety check was run. MediTrust never guesses.
+            {t('No safety check was run. MediTrust never guesses.')}
           </Reveal>
         </div>
         <div className="space-y-3">
           <Press onClick={() => navigate('/app/check')} className="btn-primary">
-            Try a different name
+            {t('Try a different name')}
           </Press>
           <Press onClick={() => navigate('/app/help')} className="btn-secondary">
-            Find a licensed pharmacy
+            {t('Find a licensed pharmacy')}
           </Press>
         </div>
       </div>
@@ -425,6 +431,7 @@ export function NoMatch() {
 /* ------------------------------------------------------------------ */
 
 export function Prescribed() {
+  const t = useT();
   const navigate = useNavigate();
   const { draft, setDraft } = useApp();
   const meds = draft.medicineIds.map(medicineById).filter((m): m is Medicine => !!m);
@@ -441,9 +448,9 @@ export function Prescribed() {
       <StepHeader step={3} />
       <div className="flex flex-1 flex-col px-5 pb-6">
         <Reveal>
-          <div className="eyebrow">Step 3 · Where it came from</div>
-          <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">Was this prescribed for you?</h1>
-          <p className="mt-2 text-[14px] leading-relaxed text-muted">Many people buy medicines without a prescription. That is common, and it is exactly when a quick check helps.</p>
+          <div className="eyebrow">{t('Step 3 · Where it came from')}</div>
+          <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Was this prescribed for you?')}</h1>
+          <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Many people buy medicines without a prescription. That is common, and it is exactly when a quick check helps.')}</p>
         </Reveal>
 
         <Reveal i={1} className="mt-5 flex flex-wrap gap-2">
@@ -453,7 +460,7 @@ export function Prescribed() {
             </span>
           ))}
           <button onClick={() => navigate('/app/check')} className="inline-flex items-center gap-1 rounded-full border border-dashed border-line px-3 py-1.5 text-[13px] font-semibold text-muted hover:border-teal-200 hover:text-teal-700">
-            <Plus size={14} /> Add another to check together
+            <Plus size={14} /> {t('Add another to check together')}
           </button>
         </Reveal>
 
@@ -474,8 +481,8 @@ export function Prescribed() {
                   {choice === val && <CheckIcon size={14} strokeWidth={3} />}
                 </span>
                 <span>
-                  <span className="block text-[15px] font-bold text-navy-900">{title}</span>
-                  <span className="block text-[12.5px] text-muted">{sub}</span>
+                  <span className="block text-[15px] font-bold text-navy-900">{t(title)}</span>
+                  <span className="block text-[12.5px] text-muted">{t(sub)}</span>
                 </span>
               </Press>
             </Reveal>
@@ -484,7 +491,7 @@ export function Prescribed() {
 
         <div className="mt-auto pt-6">
           <Press disabled={choice === null} onClick={go} className="btn-primary">
-            Run the safety checks
+            {t('Run the safety checks')}
           </Press>
         </div>
       </div>
@@ -497,6 +504,7 @@ export function Prescribed() {
 /* ------------------------------------------------------------------ */
 
 export function Running() {
+  const t = useT();
   const navigate = useNavigate();
   const { draft, profile, addHistory, resetDraft } = useApp();
   const [done, setDone] = useState(0);
@@ -533,8 +541,8 @@ export function Running() {
             <Search size={38} />
           </motion.div>
         </div>
-        <h1 className="mt-8 text-center text-[24px] font-extrabold tracking-tight text-navy-900">Running your three checks</h1>
-        <p className="mt-2 text-center text-[14px] text-muted">Comparing the medicine with your health profile using clear safety rules.</p>
+        <h1 className="mt-8 text-center text-[24px] font-extrabold tracking-tight text-navy-900">{t('Running your three checks')}</h1>
+        <p className="mt-2 text-center text-[14px] text-muted">{t('Comparing the medicine with your health profile using clear safety rules.')}</p>
         <ul className="mt-8 w-full space-y-3">
           {result.checksRun.map((c, k) => (
             <motion.li key={c.kind} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + k * 0.12 }} className="card flex items-center gap-3 p-4">
@@ -547,8 +555,8 @@ export function Running() {
                   <motion.span className="h-3 w-3 rounded-full border-2 border-teal-600 border-t-transparent" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} />
                 )}
               </span>
-              <span className="flex-1 text-[14.5px] font-bold text-navy-900">{CHECK_LABELS[c.kind]}</span>
-              <span className="text-[12px] font-semibold text-muted">{done > k ? 'Done' : 'Checking'}</span>
+              <span className="flex-1 text-[14.5px] font-bold text-navy-900">{t(CHECK_LABELS[c.kind])}</span>
+              <span className="text-[12px] font-semibold text-muted">{t(done > k ? 'Done' : 'Checking')}</span>
             </motion.li>
           ))}
         </ul>

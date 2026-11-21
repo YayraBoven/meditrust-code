@@ -9,6 +9,8 @@ import { medicineById } from '../data/medicines';
 import { displayLevel } from '../engine/checks';
 import { firstName } from '../lib/demo';
 import { useApp } from '../store/useApp';
+import { LanguagePicker } from '../components/LanguagePicker';
+import { useT } from '../i18n';
 
 const TIPS = [
   'Two brands can hold the same ingredient. Check both.',
@@ -25,10 +27,11 @@ function greeting() {
 export default function Home() {
   const navigate = useNavigate();
   const { profile, history, demoId, setDraft, resetDraft } = useApp();
+  const t = useT();
   const [tip, setTip] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setTip((n) => (n + 1) % TIPS.length), 4200);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setTip((n) => (n + 1) % TIPS.length), 4200);
+    return () => clearInterval(timer);
   }, []);
   const name = firstName(profile.name);
   const last = history[0];
@@ -41,10 +44,10 @@ export default function Home() {
   };
 
   const glance = [
-    { Icon: Baby, label: 'Pregnancy', value: profile.pregnancy === 'pregnant' ? `Pregnant${profile.trimester ? ` · T${profile.trimester}` : ''}` : profile.pregnancy === 'breastfeeding' ? 'Breastfeeding' : 'Not pregnant' },
-    { Icon: Droplets, label: 'G6PD', value: { deficient: 'Deficient', normal: 'Normal', 'family-history': 'Family history', 'not-sure': 'Not sure', 'never-tested': 'Not tested' }[profile.g6pd] },
-    { Icon: HeartPulse, label: 'Conditions', value: profile.conditions.length ? `${profile.conditions.length} listed` : 'None' },
-    { Icon: Pill, label: 'Medicines', value: profile.currentMedicines.length ? `${profile.currentMedicines.length} listed` : 'None' },
+    { Icon: Baby, label: 'Pregnancy', value: profile.pregnancy === 'pregnant' ? `${t('Pregnant')}${profile.trimester ? ` · T${profile.trimester}` : ''}` : t(profile.pregnancy === 'breastfeeding' ? 'Breastfeeding' : 'Not pregnant') },
+    { Icon: Droplets, label: 'G6PD', value: t({ deficient: 'Deficient', normal: 'Normal', 'family-history': 'Family history', 'not-sure': 'Not sure', 'never-tested': 'Not tested' }[profile.g6pd]) },
+    { Icon: HeartPulse, label: 'Conditions', value: profile.conditions.length ? String(profile.conditions.length) : t('None') },
+    { Icon: Pill, label: 'Medicines', value: profile.currentMedicines.length ? String(profile.currentMedicines.length) : t('None') },
   ];
 
   return (
@@ -53,23 +56,26 @@ export default function Home() {
         <div className="bg-[radial-gradient(420px_260px_at_100%_0%,#DDF2EF,transparent_70%)] px-5 pb-6 pt-[max(env(safe-area-inset-top),20px)]">
           <div className="flex items-center justify-between">
             <Logo size={32} />
-            <Press onClick={() => navigate('/app/help')} aria-label="Get help" className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-card text-navy-900 shadow-card">
-              <LifeBuoy size={18} />
-            </Press>
+            <div className="flex items-center gap-2">
+              <LanguagePicker />
+              <Press onClick={() => navigate('/app/help')} aria-label={t('Get help')} className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-card text-navy-900 shadow-card">
+                <LifeBuoy size={18} />
+              </Press>
+            </div>
           </div>
 
           <Reveal i={1} className="mt-6">
             <h1 className="text-[26px] font-extrabold tracking-tight text-navy-900">
-              {greeting()}
+              {t(greeting())}
               {name ? `, ${name}` : ''} <span className="inline-block origin-[70%_70%] animate-[wave_2.4s_ease-in-out_1]">👋</span>
             </h1>
-            <p className="mt-1 text-[14px] text-muted">Check a medicine before you take it.</p>
+            <p className="mt-1 text-[14px] text-muted">{t('Check a medicine before you take it.')}</p>
           </Reveal>
 
           <Reveal i={2}>
             <Press onClick={() => startCheck()} className="mt-5 flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-4 py-4 text-left shadow-card">
               <Search size={18} className="text-teal-600" />
-              <span className="flex-1 text-[15px] font-medium text-muted">Type a medicine name…</span>
+              <span className="flex-1 text-[15px] font-medium text-muted">{t('Type a medicine name…')}</span>
               <span className="rounded-xl bg-teal-600 p-2 text-white">
                 <ArrowRight size={16} />
               </span>
@@ -77,11 +83,11 @@ export default function Home() {
           </Reveal>
 
           <Reveal i={3} className="mt-3 flex h-9 items-center gap-2 overflow-hidden rounded-xl bg-teal-100/70 px-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-teal-800">Tip</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-teal-800">{t('Tip')}</span>
             <div className="relative h-5 flex-1 overflow-hidden">
               <AnimatePresence mode="popLayout">
                 <motion.p key={tip} initial={{ y: 18, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -18, opacity: 0 }} transition={{ duration: 0.4 }} className="absolute inset-0 truncate text-[12.5px] font-semibold text-teal-800">
-                  {TIPS[tip]}
+                  {t(TIPS[tip])}
                 </motion.p>
               </AnimatePresence>
             </div>
@@ -92,11 +98,11 @@ export default function Home() {
               <Press onClick={() => startCheck(demo.check.query)} className="relative w-full overflow-hidden rounded-xl3 bg-navy-900 p-5 text-left text-white">
                 <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-teal-600/40 blur-2xl" />
                 <div className="relative">
-                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-teal-200">Demo patient · {demo.name}</div>
-                  <div className="mt-2 text-[18px] font-bold leading-snug">Run {demo.name}’s check: {demo.check.query}</div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-teal-200">{t('Demo patient')} · {demo.name}</div>
+                  <div className="mt-2 text-[18px] font-bold leading-snug">{t('Run the demo check')}: {demo.check.query}</div>
                   <div className="mt-1 text-[13px] text-white/70">{demo.summary}</div>
                   <div className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-teal-500 px-3.5 py-2 text-[13px] font-bold">
-                    Start <ArrowRight size={15} />
+                    {t('Start')} <ArrowRight size={15} />
                   </div>
                 </div>
               </Press>
@@ -113,7 +119,7 @@ export default function Home() {
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-100 text-teal-700">
                   <Icon size={20} />
                 </span>
-                <span className="text-[12.5px] font-bold text-navy-900">{label}</span>
+                <span className="text-[12.5px] font-bold text-navy-900">{t(label)}</span>
               </Press>
             ))}
           </Reveal>
@@ -123,11 +129,11 @@ export default function Home() {
               <SectionTitle
                 action={
                   <button onClick={() => navigate('/app/history')} className="text-[12.5px] font-bold text-teal-700">
-                    View all
+                    {t('View all')}
                   </button>
                 }
               >
-                Last check
+                {t('Last check')}
               </SectionTitle>
               <Press onClick={() => navigate(`/app/summary/${last.id}`)} className="card flex w-full items-center gap-3 p-4 text-left">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-canvas text-navy-900">
@@ -146,18 +152,18 @@ export default function Home() {
             <SectionTitle
               action={
                 <button onClick={() => navigate('/app/profile')} className="text-[12.5px] font-bold text-teal-700">
-                  Edit
+                  {t('Edit')}
                 </button>
               }
             >
-              Your profile at a glance
+              {t('Your profile at a glance')}
             </SectionTitle>
             <div className="grid grid-cols-2 gap-3">
               {glance.map(({ Icon, label, value }) => (
                 <div key={label} className="card flex items-center gap-3 p-3.5">
                   <Icon size={18} className="shrink-0 text-teal-600" />
                   <div className="min-w-0">
-                    <div className="text-[11.5px] font-semibold text-muted">{label}</div>
+                    <div className="text-[11.5px] font-semibold text-muted">{t(label)}</div>
                     <div className="truncate text-[13.5px] font-bold text-navy-900">{value}</div>
                   </div>
                 </div>
@@ -168,8 +174,8 @@ export default function Home() {
           <Reveal i={8} className="mt-6">
             <Press onClick={() => navigate('/app/help')} className="flex w-full items-center justify-between rounded-2xl border border-dashed border-teal-200 bg-teal-50 p-4 text-left">
               <span>
-                <span className="block text-[14px] font-bold text-navy-900">Check a pack or report a side effect</span>
-                <span className="block text-[12px] text-muted">Links to mPedigree, the E-Pharmacy Platform and FDA Ghana</span>
+                <span className="block text-[14px] font-bold text-navy-900">{t('Check a pack or report a side effect')}</span>
+                <span className="block text-[12px] text-muted">{t('Links to mPedigree, the E-Pharmacy Platform and FDA Ghana')}</span>
               </span>
               <ChevronRight size={18} className="text-teal-700" />
             </Press>
