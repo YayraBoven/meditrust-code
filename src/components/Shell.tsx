@@ -91,7 +91,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
                   className="rounded-2xl border border-line bg-card p-3.5 text-left shadow-card transition-colors hover:border-teal-200"
                 >
                   <div className="text-[14px] font-bold text-navy-900">{d.name}</div>
-                  <div className="mt-0.5 text-[12px] leading-snug text-muted">{d.summary}</div>
+                  <div className="mt-0.5 text-[12px] leading-snug text-muted">{t(d.summary)}</div>
                 </motion.button>
               ))}
             </div>

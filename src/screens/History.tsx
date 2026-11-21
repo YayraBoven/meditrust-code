@@ -1,7 +1,8 @@
 import { ChevronRight, Pill, ScanSearch } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BottomNav } from '../components/Shell';
-import { Press, Reveal, RiskBadge } from '../components/ui';
+import { ConfirmSheet, Press, Reveal, RiskBadge } from '../components/ui';
 import { medicineById } from '../data/medicines';
 import { displayLevel } from '../engine/checks';
 import { useApp } from '../store/useApp';
@@ -11,6 +12,7 @@ export default function History() {
   const navigate = useNavigate();
   const { history, clearHistory, resetDraft } = useApp();
   const t = useT();
+  const [confirmClear, setConfirmClear] = useState(false);
   return (
     <>
       <div className="no-scrollbar flex-1 overflow-y-auto">
@@ -21,7 +23,7 @@ export default function History() {
               <h1 className="mt-2 text-[28px] font-extrabold tracking-tight text-navy-900">{t('Past checks')}</h1>
             </div>
             {history.length > 0 && (
-              <button onClick={() => window.confirm(t('Clear all past checks from this phone?')) && clearHistory()} className="pb-1 text-[12.5px] font-bold text-muted hover:text-risk-high">
+              <button onClick={() => setConfirmClear(true)} className="pb-1 text-[12.5px] font-bold text-muted hover:text-risk-high">
                 {t('Clear')}
               </button>
             )}
@@ -67,6 +69,17 @@ export default function History() {
         </div>
       </div>
       <BottomNav />
+      <ConfirmSheet
+        open={confirmClear}
+        title="Clear all past checks from this phone?"
+        confirmLabel="Clear"
+        danger
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={() => {
+          setConfirmClear(false);
+          clearHistory();
+        }}
+      />
     </>
   );
 }

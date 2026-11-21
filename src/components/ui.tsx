@@ -1,4 +1,4 @@
-import { motion, type HTMLMotionProps } from 'motion/react';
+import { AnimatePresence, motion, type HTMLMotionProps } from 'motion/react';
 import { AlertTriangle, ArrowLeft, Check, HelpCircle, Info, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -147,5 +147,67 @@ export function Disclaimer() {
     <p className="px-1 text-center text-[11.5px] leading-relaxed text-muted">
       {t('MediTrust gives decision support only. It does not diagnose, prescribe or replace a pharmacist or doctor.')}
     </p>
+  );
+}
+
+/**
+ * In-app confirmation sheet. Used instead of window.confirm, which some in-app
+ * browsers (for example WhatsApp's or Instagram's) silently block, so the
+ * action never happened.
+ */
+export function ConfirmSheet({
+  open,
+  title,
+  body,
+  confirmLabel,
+  danger = false,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  body?: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="absolute inset-0 z-50 flex items-end bg-navy-900/40"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onCancel}
+          role="dialog"
+          aria-modal="true"
+          aria-label={t(title)}
+        >
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full rounded-t-[28px] bg-card p-6 pb-[max(env(safe-area-inset-bottom),24px)]"
+          >
+            <div className="mx-auto mb-5 h-1.5 w-10 rounded-full bg-line" />
+            <h2 className="text-[18px] font-extrabold text-navy-900">{t(title)}</h2>
+            {body && <p className="mt-2 text-[14px] leading-relaxed text-muted">{t(body)}</p>}
+            <div className="mt-6 space-y-2">
+              <Press onClick={onConfirm} className={danger ? 'btn-primary !bg-risk-high' : 'btn-primary'}>
+                {t(confirmLabel)}
+              </Press>
+              <button onClick={onCancel} className="w-full py-3 text-[14px] font-bold text-navy-900">
+                {t('Cancel')}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

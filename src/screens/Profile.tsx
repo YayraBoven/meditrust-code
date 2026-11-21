@@ -3,7 +3,8 @@ import { Plus, Search, Trash2, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BottomNav } from '../components/Shell';
-import { Chip, Note, Press, Reveal } from '../components/ui';
+import { Chip, ConfirmSheet, Note, Press, Reveal } from '../components/ui';
+import { EMPTY_PROFILE } from '../data/demo';
 import { medicineById } from '../data/medicines';
 import type { AllergyGroup, Condition, G6pdStatus, Profile as P } from '../data/types';
 import { useMedicineSearch } from '../lib/useMedicineSearch';
@@ -116,11 +117,18 @@ function MedicinePicker({ value, onChange }: { value: string[]; onChange: (ids: 
 }
 
 export default function Profile() {
-  const navigate = useNavigate();
   const [params] = useSearchParams();
   const setup = params.get('setup') === '1';
-  const { profile, setProfile, resetAll, demoId } = useApp();
-  const [p, setP] = useState<P>(profile);
+  // Remount when switching between editing and setup, so setup starts fresh.
+  return <ProfileForm key={setup ? 'setup' : 'edit'} setup={setup} />;
+}
+
+function ProfileForm({ setup }: { setup: boolean }) {
+  const navigate = useNavigate();
+  const { profile, setProfile, resetAll, demoId, setDemo, clearHistory } = useApp();
+  // Building your own profile after trying a demo starts from a blank profile.
+  const [p, setP] = useState<P>(() => (setup && demoId ? EMPTY_PROFILE : profile));
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [saved, setSaved] = useState(false);
   const t = useT();
   const up = (patch: Partial<P>) => {
@@ -131,6 +139,11 @@ export default function Profile() {
 
   const save = () => {
     setProfile({ ...p, trimester: p.pregnancy === 'pregnant' ? p.trimester : null });
+    // A profile built in setup is the person's own, not a demo patient.
+    if (setup && demoId) {
+      setDemo(null);
+      clearHistory();
+    }
     setSaved(true);
     if (setup) navigate('/app', { replace: true });
   };
@@ -148,9 +161,14 @@ export default function Profile() {
             <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Tell us a little about your health. Every check uses this. You can update it later.')}</p>
           </Reveal>
 
-          {demoId && (
+          {demoId && !setup && (
             <div className="mt-4">
               <Note title="Demo patient loaded">{t('This is a demo profile for presenting. Edit it freely or delete it below.')}</Note>
+              {!setup && (
+                <Press onClick={() => navigate('/app/profile?setup=1')} className="btn-secondary mt-3">
+                  {t('Leave the demo and build my own profile')}
+                </Press>
+              )}
             </div>
           )}
 
@@ -267,12 +285,7 @@ export default function Profile() {
             </Press>
             {!setup && (
               <button
-                onClick={() => {
-                  if (window.confirm(t('Delete your profile and history from this phone?'))) {
-                    resetAll();
-                    navigate('/app/welcome', { replace: true });
-                  }
-                }}
+                onClick={() => setConfirmDelete(true)}
                 className="flex w-full items-center justify-center gap-2 py-2 text-[13px] font-bold text-risk-high"
               >
                 <Trash2 size={15} /> {t('Delete my profile from this phone')}
@@ -282,6 +295,19 @@ export default function Profile() {
         </div>
       </div>
       {!setup && <BottomNav />}
+      <ConfirmSheet
+        open={confirmDelete}
+        title={demoId ? 'Delete this demo profile?' : 'Delete your profile and history from this phone?'}
+        body="This cannot be undone. You can build a new profile afterwards."
+        confirmLabel="Delete"
+        danger
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          resetAll();
+          navigate('/app/welcome', { replace: true });
+        }}
+      />
     </>
   );
 }

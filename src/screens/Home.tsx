@@ -102,7 +102,7 @@ export default function Home() {
                 <div className="relative">
                   <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-teal-200">{t('Demo patient')} · {demo.name}</div>
                   <div className="mt-2 text-[18px] font-bold leading-snug">{t('Run the demo check')}: {demo.check.query}</div>
-                  <div className="mt-1 text-[13px] text-white/70">{demo.summary}</div>
+                  <div className="mt-1 text-[13px] text-white/70">{t(demo.summary)}</div>
                   <div className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-teal-500 px-3.5 py-2 text-[13px] font-bold">
                     {t('Start')} <ArrowRight size={15} />
                   </div>

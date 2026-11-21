@@ -190,7 +190,7 @@ export default function Welcome() {
                   <Press key={d.id} onClick={() => startDemo(d.id)} className="flex w-full items-center justify-between rounded-2xl border border-line p-4 text-left hover:border-teal-200 hover:bg-teal-50">
                     <div>
                       <div className="text-[15px] font-bold text-navy-900">{d.name}</div>
-                      <div className="text-[12.5px] text-muted">{d.summary}</div>
+                      <div className="text-[12.5px] text-muted">{t(d.summary)}</div>
                     </div>
                     <ChevronRight size={18} className="text-muted" />
                   </Press>
