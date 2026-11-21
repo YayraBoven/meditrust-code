@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Disclaimer, Note, Press, Reveal, RiskBadge, StepHeader, riskStyle } from '../components/ui';
 import { medicineById } from '../data/medicines';
 import { CHECK_LABELS, displayLevel } from '../engine/checks';
-import { LEVEL_COPY, composeWarning, flagText } from '../engine/explain';
+import { LEVEL_COPY, composeWarning, flagText, prescribedMode, resultCopy } from '../engine/explain';
 import { firstName } from '../lib/demo';
 import { useApp } from '../store/useApp';
 import { useT } from '../i18n';
@@ -35,7 +35,8 @@ export default function Result() {
 
   const meds = r.medicineIds.map(medicineById);
   const style = riskStyle[shown];
-  const copy = LEVEL_COPY[shown];
+  const copy = resultCopy(r);
+  const pMode = prescribedMode(r);
   const Icon = style.Icon;
 
   return (
@@ -59,6 +60,9 @@ export default function Result() {
             </div>
           </div>
           <h1 className="relative mt-4 text-[24px] font-extrabold leading-tight tracking-tight text-navy-900">{t(copy.headline)}</h1>
+          {pMode && r.level !== 'low' && (
+            <p className="relative mt-1.5 text-[13px] font-semibold leading-snug text-navy-900/75">{t(copy.lead)}</p>
+          )}
           <p className="relative mt-2 text-[15px] leading-relaxed text-navy-900">{warning}</p>
           {lang !== 'en' ? (
             <p className="relative mt-4 text-[12.5px] font-semibold text-navy-900/70">{t('Read-aloud in this language is coming soon.')}</p>
@@ -83,6 +87,11 @@ export default function Result() {
                   <div className="mt-2 text-[15px] font-bold text-navy-900">{t(f.title)}</div>
                   <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{flagText(f, t)}</p>
                   {f.detail && <p className="mt-1.5 text-[12px] font-semibold text-navy-700">{f.detail}</p>}
+                  {f.note && (
+                    <p className={`mt-2.5 rounded-xl px-3 py-2 text-[12.5px] font-semibold leading-snug ${f.discussed ? 'bg-teal-50 text-teal-800' : 'bg-canvas text-navy-900'}`}>
+                      {t(f.note)}
+                    </p>
+                  )}
                 </Reveal>
               ))}
             </div>
@@ -121,6 +130,12 @@ export default function Result() {
           </ul>
           <div className="mt-3 border-t border-line pt-3 text-[12px] leading-relaxed text-muted">
             {t(r.prescribed ? 'You said this was prescribed for you.' : 'You said you got this without a prescription (or were not sure).')}
+            {pMode && (
+              <>
+                {' '}
+                {t(pMode === 'knew' ? 'You said your doctor knew about your profile.' : pMode === 'didNotKnow' ? 'You said your doctor did not know about your profile.' : 'You were not sure your doctor knew about your profile.')}
+              </>
+            )}
           </div>
         </Reveal>
 

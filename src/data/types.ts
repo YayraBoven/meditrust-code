@@ -78,11 +78,19 @@ export interface Flag {
   /** Short reason code, kept in the audit log. */
   reason: string;
   ingredient?: string;
+  /** The part of the profile this warning is about (a fixed phrase, translated), e.g. "your pregnancy". */
+  about?: string;
+  /** Extra line shown when the medicine was prescribed (a fixed sentence, translated). */
+  note?: string;
+  /** True when the user said the prescriber knew about this. The level is kept. */
+  discussed?: boolean;
 }
 
 export interface CheckResult {
   medicineIds: string[];
   prescribed: boolean | null;
+  /** Answer to "Did the doctor who prescribed it know?": true, false or null (not sure / not asked). */
+  prescriberKnew?: boolean | null;
   level: RiskLevel;
   flags: Flag[];
   checksRun: { kind: CheckKind; label: string; flagged: boolean }[];

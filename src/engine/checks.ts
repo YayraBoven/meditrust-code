@@ -29,6 +29,23 @@ export const FLAG_TITLES = {
   alreadyTaking: 'You already take this medicine',
 } as const;
 
+/** What each kind of warning is about, phrased to follow "Did your doctor know about …". */
+export const ABOUT = {
+  pregnancy: 'your pregnancy',
+  breastfeeding: 'your breastfeeding',
+  g6pd: 'your G6PD status',
+  condition: 'your health condition',
+  allergy: 'your allergy',
+  duplicate: 'the other medicines you take',
+} as const;
+
+/** Lines added to a warning when the medicine was prescribed. The level never changes. */
+export const PRESCRIBED_NOTES = {
+  knew: 'Your doctor knew about this when prescribing it.',
+  didNotKnow: 'Your doctor did not know about this. Tell them before you take it.',
+  unsure: 'Prescribed for you. Make sure the doctor who prescribed it knew about this.',
+} as const;
+
 /** A message made of fixed sentences, so each one can be translated ahead of time. */
 const said = (parts: string[]) => ({ message: parts.join(' '), parts });
 
@@ -69,6 +86,7 @@ function flagFromRule(rule: SafetyRule, p: Profile, med: Medicine): Flag {
       ...said([rule.message, G6PD_UNSURE_NOTE]),
       reason: `${rule.id}|g6pd-unknown`,
       ingredient: ingredientName,
+      about: ABOUT.g6pd,
       detail: `${med.brand} · ${ingredientName}`,
     };
   }
@@ -87,6 +105,7 @@ function flagFromRule(rule: SafetyRule, p: Profile, med: Medicine): Flag {
     ...said([rule.message]),
     reason: rule.id,
     ingredient: ingredientName,
+    about: ABOUT[f.type],
     detail: `${med.brand} · ${ingredientName}`,
   };
 }
@@ -108,6 +127,7 @@ function otherAllergyFlags(p: Profile, med: Medicine): Flag[] {
       ...said(['This medicine contains an ingredient you listed as an allergy.']),
       reason: `allergy-typed|${ing}`,
       ingredient: INGREDIENTS[ing].name,
+      about: ABOUT.allergy,
       detail: `${med.brand} · ${INGREDIENTS[ing].name}`,
     }));
 }
@@ -161,6 +181,7 @@ function duplicateFlags(checked: Medicine[], current: Medicine[]): Flag[] {
           ),
           reason: `duplicate|${ing}`,
           ingredient: name,
+          about: ABOUT.duplicate,
           detail: same ? `${a.m.brand} · ${name}` : `${a.m.brand} + ${b.m.brand} · ${name}`,
         });
       }
@@ -169,7 +190,24 @@ function duplicateFlags(checked: Medicine[], current: Medicine[]): Flag[] {
   return flags;
 }
 
-export function runChecks(profile: Profile, medicineIds: string[], prescribed: boolean | null): CheckResult {
+/** Marks warnings on a prescribed medicine with what the user told us about the prescriber. */
+function withPrescription(flags: Flag[], prescribed: boolean | null, prescriberKnew: boolean | null): Flag[] {
+  if (prescribed !== true) return flags;
+  return flags.map((f) => {
+    if (!f.about) return f;
+    if (prescriberKnew === true) return { ...f, note: PRESCRIBED_NOTES.knew, discussed: true };
+    if (prescriberKnew === false) return { ...f, note: PRESCRIBED_NOTES.didNotKnow };
+    return { ...f, note: PRESCRIBED_NOTES.unsure };
+  });
+}
+
+/** The profile points to ask about when a prescribed medicine raised warnings. */
+export function prescriberTopics(r: Pick<CheckResult, 'flags' | 'prescribed'>): string[] {
+  if (r.prescribed !== true) return [];
+  return [...new Set(r.flags.map((f) => f.about).filter((a): a is string => !!a))];
+}
+
+export function runChecks(profile: Profile, medicineIds: string[], prescribed: boolean | null, prescriberKnew: boolean | null = null): CheckResult {
   const checked = medicineIds.map(medicineById).filter((m): m is Medicine => !!m);
   const current = profile.currentMedicines.map(medicineById).filter((m): m is Medicine => !!m);
 
@@ -186,7 +224,11 @@ export function runChecks(profile: Profile, medicineIds: string[], prescribed: b
   flags.push(...duplicateFlags(checked, current));
 
   // Highest risk first, so the most important message is read first.
-  const unique = [...new Map(flags.map((f) => [f.id, f])).values()].sort((a, b) => RANK[b.level] - RANK[a.level]);
+  const unique = withPrescription(
+    [...new Map(flags.map((f) => [f.id, f])).values()].sort((a, b) => RANK[b.level] - RANK[a.level]),
+    prescribed,
+    prescriberKnew,
+  );
 
   // Ingredients MediTrust can name but has no verified rules for: never report "no concern" for these.
   const unassessed = [...new Set(checked.flatMap((m) => m.ingredients.filter((i) => !INGREDIENTS[i]?.assessed).map((i) => ingredientName(m, i))))];
@@ -196,6 +238,7 @@ export function runChecks(profile: Profile, medicineIds: string[], prescribed: b
   return {
     medicineIds,
     prescribed,
+    prescriberKnew: prescribed === true ? prescriberKnew : null,
     level: unique.length ? maxLevel(unique.map((f) => f.level)) : 'low',
     flags: unique,
     checksRun: kinds.map((kind) => ({ kind, label: CHECK_LABELS[kind], flagged: unique.some((f) => f.check === kind) })),

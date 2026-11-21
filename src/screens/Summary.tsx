@@ -4,14 +4,14 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Logo, Press, Reveal, RiskBadge, StepHeader } from '../components/ui';
 import { ingredientNames, medicineById } from '../data/medicines';
-import { displayLevel } from '../engine/checks';
+import { displayLevel, prescriberTopics } from '../engine/checks';
 import { LEVEL_COPY, REFERRAL } from '../engine/explain';
 import { SIGNPOSTS } from './Help';
 import { useApp } from '../store/useApp';
 import { useT } from '../i18n';
 
 /** Only what a pharmacist needs: the medicine, the flag and the reason. No name. */
-function buildShareText(entryAt: string, level: keyof typeof LEVEL_COPY, meds: string[], reasons: string[], context: string[]) {
+function buildShareText(entryAt: string, level: keyof typeof LEVEL_COPY, meds: string[], reasons: string[], context: string[], rx: string) {
   return [
     'MediTrust medicine check (decision support only)',
     `Date: ${new Date(entryAt).toLocaleString()}`,
@@ -19,6 +19,7 @@ function buildShareText(entryAt: string, level: keyof typeof LEVEL_COPY, meds: s
     `Result: ${LEVEL_COPY[level].label}`,
     ...reasons.map((r) => `- ${r}`),
     context.length ? `Relevant profile: ${context.join(', ')}` : '',
+    rx,
     REFERRAL.replace('before you take it', 'about this medicine'),
   ]
     .filter(Boolean)
@@ -51,12 +52,20 @@ export default function Summary() {
     profile.g6pd === 'deficient' ? 'G6PD deficient' : ['family-history', 'not-sure', 'never-tested'].includes(profile.g6pd) ? 'G6PD status unknown' : '',
     ...profile.conditions,
   ].filter(Boolean);
+  const topics = prescriberTopics(r);
+  const knew = r.prescriberKnew === true ? 'yes' : r.prescriberKnew === false ? 'no' : 'not sure';
+  const rx = r.prescribed
+    ? topics.length
+      ? `Prescribed: yes. Prescriber knew about ${topics.join(', ').replace(/\byour\b/g, 'the patient’s')}: ${knew}.${r.prescriberKnew === true ? '' : ' Please confirm with the prescriber.'}`
+      : 'Prescribed: yes.'
+    : 'Prescribed: no or not sure.';
   const text = buildShareText(
     entry.at,
     displayLevel(r),
     meds.map((m) => `${m!.brand} (${ingredientNames(m!).join(' + ')})`),
     r.flags.map((f) => f.message),
     context,
+    rx,
   );
   const enc = encodeURIComponent(text);
 
@@ -131,7 +140,7 @@ export default function Summary() {
             )}
             <div className="rounded-2xl border border-line p-3 text-[12px] leading-relaxed text-muted">
               <span className="font-bold text-navy-900">For the pharmacist: </span>
-              MediTrust is decision support only. The flag comes from illustrative rules and the final decision is yours. Prescribed: {r.prescribed ? 'yes' : 'no or not sure'}.
+              MediTrust is decision support only. The flag comes from illustrative rules and the final decision is yours. {rx}
             </div>
           </div>
         </Reveal>

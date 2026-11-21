@@ -15,6 +15,8 @@ interface Draft {
   medicineIds: string[];
   pendingId: string | null; // medicine waiting for confirmation
   prescribed: boolean | null;
+  /** Did the prescriber know about the profile points that raised warnings? */
+  prescriberKnew?: boolean | null;
   query: string;
 }
 
@@ -42,7 +44,7 @@ interface AppState {
   resetAll: () => void;
 }
 
-const EMPTY_DRAFT: Draft = { medicineIds: [], pendingId: null, prescribed: null, query: '' };
+const EMPTY_DRAFT: Draft = { medicineIds: [], pendingId: null, prescribed: null, prescriberKnew: null, query: '' };
 
 /** Storage can be unavailable (private mode, blocked site data). Never crash because of it. */
 const safeStorage: StateStorage = {

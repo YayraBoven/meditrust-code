@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DEMO_CASES, EMPTY_PROFILE } from '../data/demo';
 import { registerExternal } from '../data/medicines';
-import { displayLevel, runChecks } from './checks';
+import { displayLevel, prescriberTopics, runChecks } from './checks';
 import { toMedicine } from './rxnorm';
 import { medicinesFromFacts } from './aiRead';
 import { candidateWords, findMedicinesInText, unknownBrandPhrases } from './ocr';
-import { composeWarning, passesSafetyFilter } from './explain';
+import { composeWarning, passesSafetyFilter, resultCopy } from './explain';
 import { CONFIDENT, searchMedicines } from './match';
 
 const demo = (id: string) => DEMO_CASES.find((d) => d.id === id)!;
@@ -215,5 +215,55 @@ describe('AI pack reading results', () => {
 
   it('nothing is offered when the photo is not a medicine pack', () => {
     expect(medicinesFromFacts(facts('', [], false))).toEqual([]);
+  });
+});
+
+describe('prescribed medicines', () => {
+  const pregnant = { ...EMPTY_PROFILE, pregnancy: 'pregnant' as const, trimester: 1 as const, g6pd: 'normal' as const };
+
+  it('keeps the risk level but changes the advice when a doctor prescribed it', () => {
+    const bought = runChecks(pregnant, ['g-misoprostol-200'], false);
+    const rx = runChecks(pregnant, ['g-misoprostol-200'], true);
+    expect(bought.level).toBe('high');
+    expect(rx.level).toBe('high');
+    expect(composeWarning(bought)).toMatch(/Do not start or stop/);
+    expect(composeWarning(rx)).not.toMatch(/Do not start or stop/);
+    expect(composeWarning(rx)).toMatch(/not sure your doctor knew/);
+    expect(resultCopy(rx).headline).toBe('Prescribed for you: one thing to confirm');
+    expect(prescriberTopics(rx)).toEqual(['your pregnancy']);
+  });
+
+  it('says the doctor knew, without lowering the level', () => {
+    const r = runChecks(pregnant, ['g-misoprostol-200'], true, true);
+    expect(r.level).toBe('high');
+    expect(r.flags[0].discussed).toBe(true);
+    expect(composeWarning(r)).toMatch(/Follow your doctor's instructions/);
+    expect(resultCopy(r).headline).toBe('Prescribed for you: discussed with your doctor');
+  });
+
+  it('asks to tell the doctor when they did not know', () => {
+    const r = runChecks(pregnant, ['g-misoprostol-200'], true, false);
+    expect(composeWarning(r)).toMatch(/Tell the doctor who prescribed it/);
+  });
+
+  it('works the same way for G6PD, conditions and duplicates, not only pregnancy', () => {
+    const kwame = demo('kwame');
+    const g = runChecks({ ...kwame.profile, g6pd: 'deficient' }, kwame.check.medicineIds, true);
+    expect(prescriberTopics(g)).toContain('your G6PD status');
+    const kofi = demo('kofi');
+    const c = runChecks(kofi.profile, kofi.check.medicineIds, true);
+    expect(prescriberTopics(c)).toContain('your health condition');
+    const efua = demo('efua');
+    const d = runChecks(efua.profile, efua.check.medicineIds, true);
+    expect(prescriberTopics(d)).toContain('the other medicines you take');
+  });
+
+  it('ignores the doctor answer when it was not prescribed, and every message still refers to a professional', () => {
+    const r = runChecks(pregnant, ['g-misoprostol-200'], false, true);
+    expect(r.prescriberKnew).toBeNull();
+    expect(prescriberTopics(r)).toEqual([]);
+    for (const knew of [true, false, null]) {
+      expect(passesSafetyFilter(composeWarning(runChecks(pregnant, ['g-misoprostol-200'], true, knew)))).toBe(true);
+    }
   });
 });

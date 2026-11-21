@@ -6,7 +6,7 @@ import { PackScanner } from '../components/PackScanner';
 import { Note, Press, Reveal, StepHeader } from '../components/ui';
 import { INGREDIENTS, ingredientNames, medicineById } from '../data/medicines';
 import type { Medicine } from '../data/types';
-import { CHECK_LABELS, runChecks } from '../engine/checks';
+import { CHECK_LABELS, prescriberTopics, runChecks } from '../engine/checks';
 import { CONFIDENT } from '../engine/match';
 import { useMedicineSearch } from '../lib/useMedicineSearch';
 import { useApp } from '../store/useApp';
@@ -437,11 +437,23 @@ export function Prescribed() {
   const navigate = useNavigate();
   const { draft, setDraft } = useApp();
   const meds = draft.medicineIds.map(medicineById).filter((m): m is Medicine => !!m);
+  const profile = useApp((s) => s.profile);
   const [choice, setChoice] = useState<boolean | 'unsure' | null>(draft.prescribed);
+  const [knew, setKnew] = useState<boolean | 'unsure' | null>(null);
+  // If a prescribed medicine would raise warnings about the profile, ask whether the prescriber knew.
+  const topics = useMemo(
+    () => (choice === true ? prescriberTopics(runChecks(profile, draft.medicineIds, true)) : []),
+    [choice, profile, draft.medicineIds],
+  );
+  const needKnew = topics.length > 0;
+  const knewRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (needKnew) setTimeout(() => knewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+  }, [needKnew]);
 
   const go = () => {
     // "Not sure" is treated like "No": the safer reading for the self-medication check.
-    setDraft({ prescribed: choice === true });
+    setDraft({ prescribed: choice === true, prescriberKnew: needKnew && knew !== 'unsure' ? knew : null });
     navigate('/app/check/running');
   };
 
@@ -491,8 +503,41 @@ export function Prescribed() {
           ))}
         </div>
 
+        {needKnew && (
+          <div ref={knewRef}>
+          <Reveal className="mt-6 rounded-2xl border border-teal-200 bg-teal-50/60 p-4">
+            <div className="text-[15px] font-bold text-navy-900">{t('Did the doctor who prescribed it know about:')}</div>
+            <ul className="mt-2 space-y-1">
+              {topics.map((tp) => (
+                <li key={tp} className="flex items-center gap-2 text-[14px] font-semibold text-teal-800">
+                  <CheckIcon size={14} strokeWidth={3} /> {t(tp)}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-muted">{t('Your profile has something a prescriber should know. Your answer changes the advice, not the risk level.')}</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {(
+                [
+                  [true, 'Yes, they knew'],
+                  [false, 'No'],
+                  ['unsure', 'Not sure'],
+                ] as const
+              ).map(([val, label]) => (
+                <Press
+                  key={String(val)}
+                  onClick={() => setKnew(val)}
+                  className={`rounded-xl border px-2 py-2.5 text-[13px] font-bold ${knew === val ? 'border-teal-600 bg-teal-600 text-white' : 'border-line bg-card text-navy-900'}`}
+                >
+                  {t(label)}
+                </Press>
+              ))}
+            </div>
+          </Reveal>
+          </div>
+        )}
+
         <div className="mt-auto pt-6">
-          <Press disabled={choice === null} onClick={go} className="btn-primary">
+          <Press disabled={choice === null || (needKnew && knew === null)} onClick={go} className="btn-primary">
             {t('Run the safety checks')}
           </Press>
         </div>
@@ -510,7 +555,7 @@ export function Running() {
   const navigate = useNavigate();
   const { draft, profile, addHistory, resetDraft } = useApp();
   const [done, setDone] = useState(0);
-  const result = useMemo(() => runChecks(profile, draft.medicineIds, draft.prescribed), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const result = useMemo(() => runChecks(profile, draft.medicineIds, draft.prescribed, draft.prescriberKnew ?? null), []); // eslint-disable-line react-hooks/exhaustive-deps
   const saved = useRef<string | null>(null);
 
   useEffect(() => {

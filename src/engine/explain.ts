@@ -32,6 +32,41 @@ export const LEVEL_COPY: Record<DisplayLevel, { label: string; headline: string;
   },
 };
 
+/** Headline and lead when a prescribed medicine raised warnings about the profile. */
+export const PRESCRIBED_COPY = {
+  confirm: {
+    headline: 'Prescribed for you: one thing to confirm',
+    lead: 'You told us a doctor prescribed this. Something in your profile should be confirmed with them.',
+  },
+  discussed: {
+    headline: 'Prescribed for you: discussed with your doctor',
+    lead: 'You told us your doctor knew about this. MediTrust still shows it so your pharmacist can see it too.',
+  },
+} as const;
+
+export const PRESCRIBED_REFERRAL = {
+  knew: "Follow your doctor's instructions, and do not stop a prescribed medicine without talking to them. The pharmacist can confirm the dose when you collect it.",
+  didNotKnow: 'Tell the doctor who prescribed it, or the pharmacist, before you take it. Do not stop a prescribed medicine without talking to your doctor.',
+  unsure: 'If you are not sure your doctor knew, tell them or the pharmacist before you take it. Do not stop a prescribed medicine without talking to your doctor.',
+} as const;
+
+/** Which prescribed wording applies, if any. */
+export function prescribedMode(result: Pick<CheckResult, 'flags' | 'prescribed' | 'prescriberKnew'>): 'knew' | 'didNotKnow' | 'unsure' | null {
+  if (result.prescribed !== true || !result.flags.some((f) => f.about)) return null;
+  if (result.prescriberKnew === true) return 'knew';
+  if (result.prescriberKnew === false) return 'didNotKnow';
+  return 'unsure';
+}
+
+/** Headline and lead for a result, aware of prescriptions. */
+export function resultCopy(result: CheckResult): { label: string; headline: string; lead: string } {
+  const base = LEVEL_COPY[displayLevel(result)];
+  const mode = prescribedMode(result);
+  if (!mode || result.level === 'low') return base;
+  const p = mode === 'knew' ? PRESCRIBED_COPY.discussed : PRESCRIBED_COPY.confirm;
+  return { ...base, headline: p.headline, lead: p.lead };
+}
+
 type T = (english: string) => string;
 const same: T = (x) => x;
 
@@ -57,6 +92,8 @@ export function composeWarning(result: CheckResult, firstName?: string, t: T = s
   }
   const top = flagText(result.flags[0], t);
   const more = result.flags.length > 1 ? ` ${t(MORE_POINTS)}` : '';
+  const mode = prescribedMode(result);
+  if (mode) return `${name}${top}${more} ${t(PRESCRIBED_REFERRAL[mode])}`;
   return `${name}${top}${more} ${t(NOT_SAFE_NOTE)} ${t(REFERRAL)}`;
 }
 
