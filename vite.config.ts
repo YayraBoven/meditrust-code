@@ -11,6 +11,7 @@ function localTts(): Plugin {
   const handler = async (req: import('http').IncomingMessage, res: import('http').ServerResponse, next: () => void) => {
     const path = req.url?.split('?')[0];
     if (path === '/api/identify' && req.method === 'POST') return identify(req, res);
+    if (path === '/api/simplify' && req.method === 'POST') return simplify(req, res);
     if (path !== '/api/tts' || req.method !== 'POST') return next();
     const env = loadEnv('development', process.cwd(), '');
     const key = env.KHAYA_API_KEY || process.env.KHAYA_API_KEY;
@@ -51,6 +52,27 @@ function localTts(): Plugin {
     }
     const { identifyWithGemini } = await import('./api/identify');
     const out = await identifyWithGemini(image, key);
+    res.statusCode = out.status;
+    res.setHeader('Content-Type', out.headers.get('Content-Type') ?? 'application/json');
+    res.end(await out.text());
+  };
+  // Local stand-in for api/simplify.ts (AI summary of trusted text).
+  const simplify = async (req: import('http').IncomingMessage, res: import('http').ServerResponse) => {
+    const env = loadEnv('development', process.cwd(), '');
+    const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!key) {
+      res.statusCode = 503;
+      return res.end('Set GEMINI_API_KEY in .env.local to use AI summaries locally.');
+    }
+    const chunks: Buffer[] = [];
+    for await (const c of req) chunks.push(c as Buffer);
+    const { text } = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+    if (process.env.HTTPS_PROXY) {
+      const { ProxyAgent, setGlobalDispatcher } = await import('undici');
+      setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
+    }
+    const { simplifyWithGemini } = await import('./api/simplify');
+    const out = await simplifyWithGemini(text, key);
     res.statusCode = out.status;
     res.setHeader('Content-Type', out.headers.get('Content-Type') ?? 'application/json');
     res.end(await out.text());

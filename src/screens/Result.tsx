@@ -9,6 +9,7 @@ import { firstName } from '../lib/demo';
 import { useApp } from '../store/useApp';
 import { useT } from '../i18n';
 import { useSpeech } from '../lib/speak';
+import { AboutMedicine } from '../components/AboutMedicine';
 import { Loader2 } from 'lucide-react';
 
 export default function Result() {
@@ -87,6 +88,8 @@ export default function Result() {
             </div>
           </div>
         )}
+
+        {meds.map((m) => m && <AboutMedicine key={m.id} medicine={m} />)}
 
         {(r.unassessed?.length ?? 0) > 0 && (
           <Reveal i={3} className="mt-6 rounded-2xl border border-[#D5DBE8] bg-[#EEF1F7] p-4">
