@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Camera, Check as CheckIcon, ChevronRight, Database, Globe, Keyboard, Mic, Pill, Plus, Search, Stethoscope, WifiOff, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PackScanner } from '../components/PackScanner';
 import { Note, Press, Reveal, StepHeader } from '../components/ui';
 import { INGREDIENTS, ingredientNames, medicineById } from '../data/medicines';
 import type { Medicine } from '../data/types';
@@ -224,17 +225,8 @@ export function CheckInput() {
           )}
 
           {mode === 'photo' && (
-            <motion.div key="photo" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="mt-4">
-              <div className="relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-xl3 bg-navy-900 text-center text-white">
-                <div className="absolute inset-6 rounded-2xl border-2 border-dashed border-white/30" />
-                <motion.div className="absolute left-6 right-6 h-0.5 bg-teal-500 shadow-[0_0_16px_#14A594]" animate={{ top: ['20%', '80%', '20%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
-                <Camera size={34} className="relative opacity-80" />
-                <div className="relative mt-3 text-[15px] font-bold">Pack scanning is coming next</div>
-                <div className="relative mt-1 max-w-[240px] text-[12.5px] text-white/70">In this prototype, please type the name printed on the pack.</div>
-              </div>
-              <Press onClick={() => setMode('type')} className="btn-secondary mt-4">
-                Type the name instead
-              </Press>
+            <motion.div key="photo" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+              <PackScanner onPick={(m) => (m.source === 'rxnorm' ? pickRemote(m) : pick(m.id))} onType={() => setMode('type')} />
             </motion.div>
           )}
 

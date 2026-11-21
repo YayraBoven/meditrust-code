@@ -1,0 +1,271 @@
+import { AnimatePresence, motion } from 'motion/react';
+import { Camera, ChevronRight, Database, ImageUp, Keyboard, Lightbulb, Pill, RotateCcw, ScanText } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ingredientNames } from '../data/medicines';
+import type { Medicine } from '../data/types';
+import { candidateWords, findMedicinesInText, preloadOcr, readPackText, unknownBrandPhrases } from '../engine/ocr';
+import { searchRxNorm } from '../engine/rxnorm';
+import { Press } from './ui';
+
+type Stage = 'start' | 'camera' | 'reading' | 'results' | 'error';
+
+interface Found {
+  local: Medicine[];
+  remote: Medicine[];
+  text: string;
+}
+
+export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void; onType: () => void }) {
+  const [stage, setStage] = useState<Stage>('start');
+  const [progress, setProgress] = useState(0);
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [found, setFound] = useState<Found | null>(null);
+  const [error, setError] = useState('');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const captureRef = useRef<HTMLInputElement>(null);
+  const canStream = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && window.isSecureContext;
+
+  // Callback ref: the <video> mounts after the entrance animation, so attach the stream then.
+  const attachVideo = (el: HTMLVideoElement | null) => {
+    videoRef.current = el;
+    if (el && streamRef.current && el.srcObject !== streamRef.current) {
+      el.srcObject = streamRef.current;
+      void el.play().catch(() => undefined);
+      // Bring the viewfinder and shutter button into view on small screens.
+      setTimeout(() => el.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  };
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
+
+  useEffect(() => {
+    preloadOcr();
+    return stopCamera;
+  }, []);
+
+  const openCamera = async () => {
+    setError('');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+      streamRef.current = stream;
+      setStage('camera'); // the viewfinder attaches the stream when it mounts (see attachVideo)
+    } catch {
+      // Permission refused or no camera: fall back to the phone's own camera app / gallery.
+      captureRef.current?.click();
+    }
+  };
+
+  const read = async (source: Blob | HTMLCanvasElement, preview: string) => {
+    setPhoto(preview);
+    setStage('reading');
+    setProgress(0);
+    try {
+      const { text } = await readPackText(source, setProgress);
+      const local = findMedicinesInText(text, 3).map((m) => m.medicine);
+      // Brand names we do not know are looked up in the wider database, even when
+      // something matched locally (e.g. "Panadol Extra" on a paracetamol pack).
+      const phrases = unknownBrandPhrases(text);
+      if (!local.length) phrases.push(...candidateWords(text).slice(0, 2));
+      let remote: Medicine[] = [];
+      for (const ph of phrases) {
+        try {
+          remote = await searchRxNorm(ph, undefined, 2);
+        } catch {
+          remote = [];
+        }
+        if (remote.length) break;
+      }
+      const localSets = new Set(local.map((m) => [...m.ingredients].sort().join('|')));
+      remote = remote.filter((m) => !localSets.has([...m.ingredients].sort().join('|')) || m.brand.toLowerCase() !== m.generic.toLowerCase());
+      setFound({ local, remote, text });
+      setStage('results');
+    } catch {
+      setError('The text reader could not start. Check your connection the first time you use it, then try again.');
+      setStage('error');
+    }
+  };
+
+  const capture = () => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return;
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    c.getContext('2d')!.drawImage(v, 0, 0);
+    const preview = c.toDataURL('image/jpeg', 0.7);
+    stopCamera();
+    void read(c, preview);
+  };
+
+  const onFile = (f: File | undefined) => {
+    if (!f) return;
+    stopCamera();
+    void read(f, URL.createObjectURL(f));
+  };
+
+  const reset = () => {
+    setFound(null);
+    setPhoto(null);
+    setStage('start');
+  };
+
+  const snippet = found?.text.replace(/\s+/g, ' ').trim().slice(0, 110);
+  const nothing = found && !found.local.length && !found.remote.length;
+
+  return (
+    <div className="mt-4">
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} aria-label="Upload a photo of the pack" />
+      <input ref={captureRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} aria-label="Take a photo of the pack" />
+
+      <AnimatePresence mode="wait">
+        {stage === 'start' && (
+          <motion.div key="start" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="relative flex aspect-[4/3] flex-col items-center justify-center overflow-hidden rounded-xl3 bg-navy-900 text-center text-white">
+              <div className="absolute inset-6 rounded-2xl border-2 border-dashed border-white/25" />
+              <motion.div className="absolute left-6 right-6 h-0.5 bg-teal-500 shadow-[0_0_16px_#14A594]" animate={{ top: ['22%', '78%', '22%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
+              <ScanText size={36} className="relative opacity-90" />
+              <div className="relative mt-3 text-[15px] font-bold">Scan the medicine pack</div>
+              <div className="relative mt-1 max-w-[250px] text-[12.5px] text-white/70">Point at the side with the medicine name. The photo is read on this phone and never uploaded.</div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Press onClick={canStream ? openCamera : () => captureRef.current?.click()} className="btn-primary">
+                <Camera size={18} /> Open camera
+              </Press>
+              <Press onClick={() => fileRef.current?.click()} className="btn-secondary">
+                <ImageUp size={18} /> Upload photo
+              </Press>
+            </div>
+            <ul className="mt-4 space-y-1.5 text-[12.5px] text-muted">
+              {['Good light, no glare on the shiny box', 'Fill the frame with the name and strength', 'Hold still for a second'].map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <Lightbulb size={13} className="text-teal-600" /> {t}
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+        )}
+
+        {stage === 'camera' && (
+          <motion.div key="camera" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="relative aspect-[4/5] max-h-[52vh] w-full overflow-hidden rounded-xl3 bg-black">
+              <video ref={attachVideo} playsInline muted autoPlay className="h-full w-full object-cover" />
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute inset-x-6 top-1/2 h-[42%] -translate-y-1/2 rounded-2xl border-2 border-white/80 shadow-[0_0_0_9999px_rgba(14,27,51,0.45)]" />
+                <motion.div className="absolute inset-x-8 h-0.5 bg-teal-500 shadow-[0_0_14px_#14A594]" animate={{ top: ['32%', '68%', '32%'] }} transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
+                <div className="absolute inset-x-0 top-4 text-center text-[12.5px] font-semibold text-white">Fit the medicine name inside the box</div>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  stopCamera();
+                  setStage('start');
+                }}
+                className="w-20 text-[13px] font-bold text-muted"
+              >
+                Cancel
+              </button>
+              <Press onClick={capture} aria-label="Take photo" className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-teal-200 bg-teal-600 shadow-[0_10px_24px_rgba(14,147,132,0.4)]">
+                <span className="h-12 w-12 rounded-full border-2 border-white/80" />
+              </Press>
+              <button
+                onClick={() => {
+                  stopCamera();
+                  fileRef.current?.click();
+                }}
+                className="w-20 text-right text-[13px] font-bold text-teal-700"
+              >
+                Upload
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {stage === 'reading' && (
+          <motion.div key="reading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="relative aspect-[4/3] overflow-hidden rounded-xl3 bg-navy-900">
+              {photo && <img src={photo} alt="Your photo of the pack" className="h-full w-full object-cover opacity-70" />}
+              <motion.div className="absolute inset-x-0 h-16 bg-gradient-to-b from-transparent via-teal-500/40 to-transparent" animate={{ top: ['-10%', '90%'] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'linear' }} />
+            </div>
+            <div className="mt-4 text-[15px] font-bold text-navy-900">Reading the pack…</div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-teal-100">
+              <motion.div className="h-full rounded-full bg-teal-600" animate={{ width: `${Math.round(progress * 100)}%` }} transition={{ ease: 'easeOut' }} />
+            </div>
+            <div className="mt-1.5 text-[12px] text-muted">{progress < 0.33 ? 'Getting the text reader ready (first time only)' : 'Looking for the medicine name'}</div>
+          </motion.div>
+        )}
+
+        {stage === 'results' && found && (
+          <motion.div key="results" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="flex gap-3 rounded-2xl bg-card p-3 shadow-card">
+              {photo && <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />}
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">We read</div>
+                <div className="line-clamp-3 text-[12.5px] leading-snug text-navy-900">{snippet || 'No clear text found'}</div>
+              </div>
+            </div>
+
+            {nothing ? (
+              <div className="mt-5 text-center">
+                <div className="text-[16px] font-bold text-navy-900">We could not find a medicine name</div>
+                <p className="mx-auto mt-1 max-w-[280px] text-[13px] text-muted">Try again with better light and the name filling the frame, or type the name instead.</p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-2 mt-5 text-[13px] font-bold text-navy-900">Is it one of these?</div>
+                <ul className="space-y-2">
+                  {[...found.remote, ...found.local].map((m, k) => (
+                    <motion.li key={m.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0, transition: { delay: k * 0.05 } }}>
+                      <Press onClick={() => onPick(m)} className="card flex w-full items-center gap-3 p-3.5 text-left hover:border-teal-200">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${m.source === 'rxnorm' ? 'bg-navy-900/5 text-navy-800' : 'bg-teal-100 text-teal-700'}`}>
+                          {m.source === 'rxnorm' ? <Database size={18} /> : <Pill size={18} />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-[14.5px] font-bold text-navy-900">{m.brand}</span>
+                          <span className="block truncate text-[12.5px] text-muted">
+                            {ingredientNames(m).join(' + ')}
+                            {m.strength ? ` · ${m.strength}` : ''}
+                            {m.source === 'rxnorm' ? ' · RxNorm' : ''}
+                          </span>
+                        </span>
+                        <ChevronRight size={18} className="text-muted" />
+                      </Press>
+                    </motion.li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <Press onClick={reset} className="btn-secondary">
+                <RotateCcw size={16} /> Scan again
+              </Press>
+              <Press onClick={onType} className="btn-secondary">
+                <Keyboard size={16} /> Type it
+              </Press>
+            </div>
+          </motion.div>
+        )}
+
+        {stage === 'error' && (
+          <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl bg-card p-5 text-center shadow-card">
+            <div className="text-[15px] font-bold text-navy-900">Something went wrong</div>
+            <p className="mt-1 text-[13px] text-muted">{error}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Press onClick={reset} className="btn-secondary">
+                Try again
+              </Press>
+              <Press onClick={onType} className="btn-secondary">
+                Type it
+              </Press>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -3,6 +3,7 @@ import { DEMO_CASES, EMPTY_PROFILE } from '../data/demo';
 import { registerExternal } from '../data/medicines';
 import { displayLevel, runChecks } from './checks';
 import { toMedicine } from './rxnorm';
+import { candidateWords, findMedicinesInText, unknownBrandPhrases } from './ocr';
 import { composeWarning, passesSafetyFilter } from './explain';
 import { CONFIDENT, searchMedicines } from './match';
 
@@ -142,5 +143,41 @@ describe('broad coverage', () => {
     const r = runChecks({ ...EMPTY_PROFILE, g6pd: 'normal', currentMedicines: [b.id] }, [a.id], false);
     expect(r.flags.some((f) => f.check === 'duplicate')).toBe(true);
     expect(r.unassessed).toContain('Echinacea');
+  });
+});
+
+describe('reading a pack photo', () => {
+  it('finds the medicine named in pack text, preferring the printed strength', () => {
+    const text = 'DEMO SAMPLE\nIbucare 200\nIbuprofen Tablets BP 200 mg\n24 tablets\nKeep out of reach of children';
+    const found = findMedicinesInText(text);
+    expect(found[0].medicine.id).toBe('ibucare-200');
+  });
+
+  it('copes with a generic pack and OCR noise', () => {
+    const found = findMedicinesInText('Artemether / Lumefantrine\n20mg/120mg tablets ~ Batch No: A12 |');
+    expect(found.some((f) => f.medicine.ingredients.includes('artemether'))).toBe(true);
+  });
+
+  it('ignores packaging words and finds nothing in unrelated text', () => {
+    expect(findMedicinesInText('Store below 30C. Keep out of reach of children. Batch 12 Exp 2027')).toHaveLength(0);
+    expect(candidateWords('Store below 30C. Keep tablets dry. Exp 2027')).toEqual([]);
+  });
+});
+
+describe('pack text ranking', () => {
+  it('prefers the product whose ingredients are all printed on the pack', () => {
+    const found = findMedicinesInText('Panadol Extra\nParacetamol 500 mg / Caffeine 65 mg\n20 tablets');
+    expect(found[0].medicine.id).toBe('paraplus-extra');
+  });
+  it('spots an unknown brand name worth looking up', () => {
+    expect(unknownBrandPhrases('Panadol Extra\nParacetamol 500 mg / Caffeine 65 mg')).toEqual(['Panadol Extra']);
+    expect(unknownBrandPhrases('Ibucare 200\nIbuprofen Tablets 200 mg')).toEqual([]);
+  });
+});
+
+describe('brand lookup stays on the brand line', () => {
+  it('does not look up packaging lines below a recognised name', () => {
+    expect(unknownBrandPhrases('Ibucare 200\nIbuprofen Tablets 200 mg\n24 film-coated tablets')).toEqual([]);
+    expect(unknownBrandPhrases('Magnesium Glycinate\n200 mg capsules\nDietary supplement 60 capsules')).toEqual([]);
   });
 });
