@@ -4,6 +4,8 @@ High-fidelity prototype of MediTrust Ghana: a mobile-first app (also usable on a
 
 **Decision support only.** MediTrust does not diagnose, prescribe, suggest substitutes or tell anyone to stop a medicine. All medicine data and safety rules in this prototype are illustrative and must be reviewed by a pharmacist.
 
+**Live prototype:** https://meditrust-code-y5ac.vercel.app (open on a phone and choose *Add to Home Screen*).
+
 Project: AI in Business group project.
 
 ## Run it locally
@@ -14,6 +16,12 @@ npm run dev      # open the printed link; on a laptop the app shows in a phone f
 npm test         # rules-engine tests, including the four demo patients
 npm run build    # production build in dist/ (installable PWA)
 ```
+
+## AI features
+
+- **AI pack reading** (`api/identify.ts`): the photo only is sent to Google Gemini (free tier), which reports what is printed on the pack. Falls back to on-device reading (Tesseract.js) if unavailable.
+- **About this medicine**: trusted summaries from MedlinePlus (U.S. National Library of Medicine), with an optional, clearly labelled AI rewrite in simple words (`api/simplify.ts`) that uses only that text.
+- Set `GEMINI_API_KEY` in Vercel → Settings → Environment Variables (and in `.env.local` for local dev).
 
 ## How it is built
 
