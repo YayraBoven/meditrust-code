@@ -16,6 +16,19 @@ const G6PD_UNSURE = new Set(['family-history', 'not-sure', 'never-tested']);
 export const G6PD_UNSURE_NOTE =
   'You are not sure of your G6PD status, so this is a possible risk to discuss, not a diagnosis. Ask a pharmacist whether you should have a G6PD test first.';
 
+/** Every warning title, in one place so all of them are translated. */
+export const FLAG_TITLES = {
+  g6pd: 'G6PD risk',
+  g6pdUnsure: 'Possible G6PD concern',
+  pregnancy: 'Pregnancy concern',
+  breastfeeding: 'Breastfeeding concern',
+  condition: 'Concern with your health condition',
+  allergy: 'Possible allergy',
+  rxOnly: 'Usually needs a prescription',
+  duplicate: 'Same ingredient twice',
+  alreadyTaking: 'You already take this medicine',
+} as const;
+
 /** A message made of fixed sentences, so each one can be translated ahead of time. */
 const said = (parts: string[]) => ({ message: parts.join(' '), parts });
 
@@ -52,7 +65,7 @@ function flagFromRule(rule: SafetyRule, p: Profile, med: Medicine): Flag {
       id: `${rule.id}:${med.id}`,
       check: 'g6pd-pregnancy',
       level: 'medium',
-      title: 'Possible G6PD concern',
+      title: FLAG_TITLES.g6pdUnsure,
       ...said([rule.message, G6PD_UNSURE_NOTE]),
       reason: `${rule.id}|g6pd-unknown`,
       ingredient: ingredientName,
@@ -60,11 +73,11 @@ function flagFromRule(rule: SafetyRule, p: Profile, med: Medicine): Flag {
     };
   }
   const titles: Record<SafetyRule['factor']['type'], string> = {
-    g6pd: 'G6PD risk',
-    pregnancy: 'Pregnancy concern',
-    breastfeeding: 'Breastfeeding concern',
-    condition: 'Concern with your health condition',
-    allergy: 'Possible allergy',
+    g6pd: FLAG_TITLES.g6pd,
+    pregnancy: FLAG_TITLES.pregnancy,
+    breastfeeding: FLAG_TITLES.breastfeeding,
+    condition: FLAG_TITLES.condition,
+    allergy: FLAG_TITLES.allergy,
   };
   return {
     id: `${rule.id}:${med.id}`,
@@ -107,7 +120,7 @@ function prescriptionFlag(med: Medicine, prescribed: boolean | null): Flag[] {
       id: `rx-only:${med.id}`,
       check: 'self-medication',
       level: 'medium',
-      title: 'Usually needs a prescription',
+      title: FLAG_TITLES.rxOnly,
       ...said(
         isAntibiotic
           ? ['This is an antibiotic that usually needs a prescription.', 'Taking antibiotics without one can mean the wrong medicine or dose, and helps germs become resistant.']
@@ -140,7 +153,7 @@ function duplicateFlags(checked: Medicine[], current: Medicine[]): Flag[] {
           id: `dup-${key}`,
           check: 'duplicate',
           level: 'medium',
-          title: same ? 'You already take this medicine' : 'Same ingredient twice',
+          title: same ? FLAG_TITLES.alreadyTaking : FLAG_TITLES.duplicate,
           ...said(
             same
               ? ['You listed this medicine as one you already take.', 'Taking extra may give you too much of it.']

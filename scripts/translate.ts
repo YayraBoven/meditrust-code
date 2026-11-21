@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { ALL_RULES } from '../src/data/rules';
 import { INGREDIENTS } from '../src/data/medicines';
-import { CHECK_LABELS, G6PD_UNSURE_NOTE } from '../src/engine/checks';
+import { CHECK_LABELS, FLAG_TITLES, G6PD_UNSURE_NOTE } from '../src/engine/checks';
 import * as explain from '../src/engine/explain';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -48,7 +48,7 @@ function insideT(node: ts.Node): boolean {
 /** Literal inside an array that is mapped in JSX ([...].map) or held by an UPPER_CASE constant. */
 function inTextArray(node: ts.Node): boolean {
   for (let p = node.parent; p; p = p.parent) {
-    if (ts.isArrayLiteralExpression(p) || ts.isObjectLiteralExpression(p) || ts.isPropertyAssignment(p) || ts.isAsExpression(p)) {
+    if (ts.isArrayLiteralExpression(p) || ts.isObjectLiteralExpression(p) || ts.isPropertyAssignment(p) || ts.isAsExpression(p) || ts.isParenthesizedExpression(p)) {
       const up = p.parent;
       if (up && ts.isPropertyAccessExpression(up) && up.name.text === 'map') return true;
       if (up && ts.isVariableDeclaration(up) && /^[A-Z][A-Z0-9_]+$/.test(up.name.getText())) return true;
@@ -87,6 +87,7 @@ export function extract(): string[] {
   ALL_RULES.forEach((r) => out.add(r.message));
   Object.values(INGREDIENTS).forEach((i) => out.add(i.kind));
   Object.values(CHECK_LABELS).forEach((l) => out.add(l));
+  Object.values(FLAG_TITLES).forEach((l) => out.add(l));
   Object.values(explain.LEVEL_COPY).forEach((c) => [c.label, c.headline, c.lead].forEach((x) => out.add(x)));
   [explain.REFERRAL, explain.NOT_SAFE_NOTE, explain.MORE_POINTS, explain.NO_CONCERN, explain.UNVERIFIED_NOTE, G6PD_UNSURE_NOTE].forEach((x) => out.add(x));
   return [...out].filter(looksLikeText).sort();

@@ -19,9 +19,11 @@ const TIPS = [
   'Pregnant? Check every medicine, even familiar ones.',
 ];
 
+const GREETINGS = ['Good morning', 'Good afternoon', 'Good evening'];
+
 function greeting() {
   const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  return GREETINGS[h < 12 ? 0 : h < 17 ? 1 : 2];
 }
 
 export default function Home() {

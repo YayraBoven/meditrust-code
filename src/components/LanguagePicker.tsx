@@ -44,30 +44,38 @@ export function LanguagePicker({ variant = 'chip' }: { variant?: 'chip' | 'row' 
             >
               <div className="mx-auto mb-5 h-1.5 w-10 rounded-full bg-line" />
               <h2 className="text-[18px] font-extrabold text-navy-900">{t('Choose language')}</h2>
-              <p className="mb-4 mt-1 text-[12.5px] leading-relaxed text-muted">{t('Translations are machine-made with GhanaNLP and are being checked by fluent speakers.')}</p>
+              <p className="mb-4 mt-1 text-[12.5px] leading-relaxed text-muted">{t('Translations are drafts and are being checked by fluent speakers.')}</p>
               <ul className="space-y-2">
-                {LANGS.map((l) => (
+                {LANGS.map((l) => {
+                  const ready = coverage(l.id) >= 0.5;
+                  return (
                   <li key={l.id}>
                     <Press
+                      disabled={!ready}
                       onClick={() => {
                         setLang(l.id);
                         setOpen(false);
                       }}
-                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left ${lang === l.id ? 'border-teal-600 bg-teal-50' : 'border-line'}`}
+                      className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-left disabled:opacity-55 ${lang === l.id ? 'border-teal-600 bg-teal-50' : 'border-line'}`}
                     >
                       <span>
                         <span className="block text-[15px] font-bold text-navy-900">{l.native}</span>
                         {l.native !== l.name && <span className="block text-[12px] text-muted">{l.name}</span>}
-                        {coverage(l.id) < 1 && (
-                          <span className="mt-1 block text-[11.5px] font-semibold text-note-ink">
-                            {t('Translation in progress')} · {Math.round(coverage(l.id) * 100)}%
-                          </span>
+                        {!ready ? (
+                          <span className="mt-1 block text-[11.5px] font-semibold text-muted">{t('Coming soon')}</span>
+                        ) : (
+                          coverage(l.id) < 1 && (
+                            <span className="mt-1 block text-[11.5px] font-semibold text-note-ink">
+                              {t('Translation in progress')} · {Math.round(coverage(l.id) * 100)}%
+                            </span>
+                          )
                         )}
                       </span>
                       {lang === l.id && <Check size={18} className="text-teal-700" strokeWidth={3} />}
                     </Press>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </motion.div>
           </motion.div>

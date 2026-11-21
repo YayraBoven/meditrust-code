@@ -59,7 +59,9 @@ export default function Result() {
           </div>
           <h1 className="relative mt-4 text-[24px] font-extrabold leading-tight tracking-tight text-navy-900">{t(copy.headline)}</h1>
           <p className="relative mt-2 text-[15px] leading-relaxed text-navy-900">{warning}</p>
-          {supported && (
+          {lang !== 'en' ? (
+            <p className="relative mt-4 text-[12.5px] font-semibold text-navy-900/70">{t('Read-aloud in this language is coming soon.')}</p>
+          ) : supported && (
             <Press onClick={toggle} className="relative mt-4 inline-flex items-center gap-2 rounded-xl bg-white/80 px-3.5 py-2 text-[13px] font-bold text-navy-900 shadow-sm">
               {speech === 'loading' ? <Loader2 size={15} className="animate-spin" /> : speech === 'speaking' ? <Pause size={15} /> : <Volume2 size={15} />}{' '}
               {t(speech === 'speaking' ? 'Stop' : speech === 'loading' ? 'Preparing audio…' : speech === 'error' ? 'Audio not available right now' : 'Listen to this result')}
@@ -74,7 +76,7 @@ export default function Result() {
               {r.flags.map((f, k) => (
                 <Reveal key={f.id} i={2 + k} className="card p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{CHECK_LABELS[f.check]}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted">{t(CHECK_LABELS[f.check])}</span>
                     <RiskBadge level={f.level} />
                   </div>
                   <div className="mt-2 text-[15px] font-bold text-navy-900">{t(f.title)}</div>
