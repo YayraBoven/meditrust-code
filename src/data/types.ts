@@ -30,7 +30,7 @@ export interface Ingredient {
   synonyms?: string[];
 }
 
-export type MedicineSource = 'demo' | 'ghana-list' | 'rxnorm';
+export type MedicineSource = 'demo' | 'ghana-list' | 'rxnorm' | 'photo';
 
 export interface Medicine {
   id: string;

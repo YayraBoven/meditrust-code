@@ -272,12 +272,14 @@ const SOURCE_TAG: Record<NonNullable<Medicine['source']>, string> = {
   demo: 'Demo sample',
   'ghana-list': 'Common medicine · generic',
   rxnorm: 'Wider database · RxNorm',
+  photo: 'Read from your photo · AI',
 };
 
 const SOURCE_NOTE: Record<NonNullable<Medicine['source']>, string> = {
   demo: 'This is an invented demo brand from MediTrust’s illustrative list, not a verified live database.',
   'ghana-list': 'This comes from MediTrust’s illustrative list of common medicines in Ghana. A pharmacist still needs to review it.',
   rxnorm: 'Identified using RxNorm (U.S. National Library of Medicine). Names and ingredients may differ from packs sold in Ghana, so check them against your pack.',
+  photo: 'Read from your photo by AI (Google Gemini). AI can misread, so check that the name and strength match your pack.',
 };
 
 function PackArt({ m }: { m: Medicine }) {
@@ -297,7 +299,7 @@ function PackArt({ m }: { m: Medicine }) {
         <div className="mt-1 text-[12.5px] font-semibold text-navy-900">
           {[m.strength, m.form].filter(Boolean).join(' · ')}
         </div>
-        <div className="mt-4 text-[10.5px] text-muted">{m.source === 'rxnorm' ? 'RxNorm (NLM)' : t('For prototype use only')}</div>
+        <div className="mt-4 text-[10.5px] text-muted">{m.source === 'rxnorm' ? 'RxNorm (NLM)' : m.source === 'photo' ? 'Google Gemini' : t('For prototype use only')}</div>
       </div>
       <motion.div
         className="absolute bottom-4 right-5 h-5 w-12 rounded-full bg-gradient-to-r from-teal-500 from-50% to-white to-50% shadow"
@@ -367,7 +369,7 @@ export function Confirm() {
           </div>
         </Reveal>
         <Reveal i={3} className="mt-4">
-          <Note title={m.source === 'rxnorm' ? 'Found in a wider database' : 'Illustrative information'}>{t(SOURCE_NOTE[m.source ?? 'demo'])}</Note>
+          <Note title={m.source === 'rxnorm' ? 'Found in a wider database' : m.source === 'photo' ? 'Read by AI from your photo' : 'Illustrative information'}>{t(SOURCE_NOTE[m.source ?? 'demo'])}</Note>
         </Reveal>
         <Reveal i={4} className="mt-6 space-y-3">
           <div className="text-center text-[15px] font-semibold text-navy-900">{t('Is this the correct medicine?')}</div>

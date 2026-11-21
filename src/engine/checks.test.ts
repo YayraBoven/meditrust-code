@@ -3,6 +3,7 @@ import { DEMO_CASES, EMPTY_PROFILE } from '../data/demo';
 import { registerExternal } from '../data/medicines';
 import { displayLevel, runChecks } from './checks';
 import { toMedicine } from './rxnorm';
+import { medicinesFromFacts } from './aiRead';
 import { candidateWords, findMedicinesInText, unknownBrandPhrases } from './ocr';
 import { composeWarning, passesSafetyFilter } from './explain';
 import { CONFIDENT, searchMedicines } from './match';
@@ -179,5 +180,40 @@ describe('brand lookup stays on the brand line', () => {
   it('does not look up packaging lines below a recognised name', () => {
     expect(unknownBrandPhrases('Ibucare 200\nIbuprofen Tablets 200 mg\n24 film-coated tablets')).toEqual([]);
     expect(unknownBrandPhrases('Magnesium Glycinate\n200 mg capsules\nDietary supplement 60 capsules')).toEqual([]);
+  });
+});
+
+describe('AI pack reading results', () => {
+  const facts = (brand: string, ings: [string, string][], pack = true) => ({
+    is_medicine_pack: pack,
+    brand_name: brand,
+    active_ingredients: ings.map(([name, strength]) => ({ name, strength })),
+    dosage_form: 'tablets',
+    manufacturer: '',
+    text_seen: '',
+    confidence: 'high' as const,
+  });
+
+  it('a known demo brand matches our own entry first', () => {
+    expect(medicinesFromFacts(facts('Ibucare 200', [['Ibuprofen', '200 mg']]))[0].id).toBe('ibucare-200');
+  });
+
+  it('an unknown brand is offered exactly as printed, then same-ingredient generics', () => {
+    const list = medicinesFromFacts(facts('Panadol Extra', [['Paracetamol', '500 mg'], ['Caffeine', '65 mg']]));
+    expect(list[0].source).toBe('photo');
+    expect(list[0].brand).toBe('Panadol Extra');
+    expect(list[0].ingredients).toEqual(['paracetamol', 'caffeine']);
+    expect(list.some((m) => m.id === 'paraplus-extra')).toBe(true);
+  });
+
+  it('a printed medicine still goes through the safety rules', () => {
+    const [m] = medicinesFromFacts(facts('Some Doxy', [['Doxycycline', '100 mg']]));
+    registerExternal(m);
+    const r = runChecks({ ...EMPTY_PROFILE, pregnancy: 'pregnant', trimester: 1, g6pd: 'normal' }, [m.id], true);
+    expect(r.level).toBe('high');
+  });
+
+  it('nothing is offered when the photo is not a medicine pack', () => {
+    expect(medicinesFromFacts(facts('', [], false))).toEqual([]);
   });
 });

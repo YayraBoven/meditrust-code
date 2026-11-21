@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ingredientNames } from '../data/medicines';
 import type { Medicine } from '../data/types';
 import { candidateWords, findMedicinesInText, preloadOcr, readPackText, spottedTerms, unknownBrandPhrases, type Crop } from '../engine/ocr';
+import { aiReadPack, factChips, medicinesFromFacts } from '../engine/aiRead';
+import { useApp } from '../store/useApp';
 import { searchRxNorm } from '../engine/rxnorm';
 import { Press } from './ui';
 import { useT } from '../i18n';
@@ -15,6 +17,9 @@ interface Found {
   remote: Medicine[];
   text: string;
   words: number;
+  /** Set when the AI reader was used: what it read on the pack. */
+  chips?: string[];
+  by: 'ai' | 'device';
 }
 
 /**
@@ -44,6 +49,8 @@ function guideCrop(v: HTMLVideoElement): Crop | undefined {
 export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void; onType: () => void }) {
   const t = useT();
   const [stage, setStage] = useState<Stage>('start');
+  const [reader, setReader] = useState<'ai' | 'device'>('ai');
+  const addExternal = useApp((s) => s.addExternal);
   const [progress, setProgress] = useState(0);
   const [photo, setPhoto] = useState<string | null>(null);
   const [found, setFound] = useState<Found | null>(null);
@@ -91,6 +98,31 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
     setPhoto(preview);
     setStage('reading');
     setProgress(0);
+    // 1. AI reading (Google Gemini) when online. Falls back to the on-device reader on any problem.
+    if (navigator.onLine) {
+      setReader('ai');
+      let fake = 0.05;
+      const tick = setInterval(() => setProgress((fake = Math.min(0.92, fake + 0.04))), 400);
+      try {
+        const facts = await aiReadPack(source, crop);
+        clearInterval(tick);
+        setProgress(1);
+        const meds = medicinesFromFacts(facts);
+        meds.filter((m) => m.source === 'photo').forEach(addExternal);
+        if (meds.length || facts.is_medicine_pack === false) {
+          setFound({ local: meds, remote: [], text: facts.text_seen, words: facts.text_seen.split(/\s+/).length, chips: factChips(facts), by: 'ai' });
+          setStage('results');
+          return;
+        }
+      } catch {
+        // AI unavailable (offline, busy, not configured): use the on-device reader below.
+      } finally {
+        clearInterval(tick);
+      }
+    }
+    // 2. On-device reading (Tesseract), photo never leaves the phone.
+    setReader('device');
+    setProgress(0);
     try {
       const { text, words } = await readPackText(source, setProgress, crop);
       const local = findMedicinesInText(text, 3).map((m) => m.medicine);
@@ -109,7 +141,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
       }
       const localSets = new Set(local.map((m) => [...m.ingredients].sort().join('|')));
       remote = remote.filter((m) => !localSets.has([...m.ingredients].sort().join('|')) || m.brand.toLowerCase() !== m.generic.toLowerCase());
-      setFound({ local, remote, text, words });
+      setFound({ local, remote, text, words, by: 'device' });
       setStage('results');
     } catch {
       setError('The text reader could not start. Check your connection the first time you use it, then try again.');
@@ -142,7 +174,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
     setStage('start');
   };
 
-  const spotted = found ? spottedTerms(found.text) : [];
+  const spotted = found ? (found.chips ?? spottedTerms(found.text)) : [];
   const nothing = found && !found.local.length && !found.remote.length;
   const unreadable = !!found && nothing && found.words < 3;
 
@@ -159,7 +191,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
               <motion.div className="absolute left-6 right-6 h-0.5 bg-teal-500 shadow-[0_0_16px_#14A594]" animate={{ top: ['22%', '78%', '22%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
               <ScanText size={36} className="relative opacity-90" />
               <div className="relative mt-3 text-[15px] font-bold">{t('Scan the medicine pack')}</div>
-              <div className="relative mt-1 max-w-[250px] text-[12.5px] text-white/70">{t('Point at the side with the medicine name. The photo is read on this phone and never uploaded.')}</div>
+              <div className="relative mt-1 max-w-[250px] text-[12.5px] text-white/70">{t('Point at the side with the medicine name. AI (Google Gemini) reads the photo only to find the medicine. Your name and health profile are never sent.')}</div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Press onClick={canStream ? openCamera : () => captureRef.current?.click()} className="btn-primary">
@@ -225,7 +257,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-teal-100">
               <motion.div className="h-full rounded-full bg-teal-600" animate={{ width: `${Math.round(progress * 100)}%` }} transition={{ ease: 'easeOut' }} />
             </div>
-            <div className="mt-1.5 text-[12px] text-muted">{t(progress < 0.2 ? 'Getting the text reader ready (first time only)' : 'Looking for the medicine name')}</div>
+            <div className="mt-1.5 text-[12px] text-muted">{t(reader === 'ai' ? 'AI is reading the medicine name and strength' : progress < 0.2 ? 'Getting the text reader ready (first time only)' : 'Looking for the medicine name')}</div>
           </motion.div>
         )}
 
@@ -234,7 +266,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
             <div className="flex gap-3 rounded-2xl bg-card p-3 shadow-card">
               {photo && <img src={photo} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" />}
               <div className="min-w-0">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">{t('We spotted')}</div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-muted">{t(found.by === 'ai' ? 'Read by AI' : 'We spotted')}</div>
                 {spotted.length ? (
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {spotted.map((term) => (

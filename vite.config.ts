@@ -9,7 +9,9 @@ import { VitePWA } from 'vite-plugin-pwa';
  */
 function localTts(): Plugin {
   const handler = async (req: import('http').IncomingMessage, res: import('http').ServerResponse, next: () => void) => {
-    if (req.url?.split('?')[0] !== '/api/tts' || req.method !== 'POST') return next();
+    const path = req.url?.split('?')[0];
+    if (path === '/api/identify' && req.method === 'POST') return identify(req, res);
+    if (path !== '/api/tts' || req.method !== 'POST') return next();
     const env = loadEnv('development', process.cwd(), '');
     const key = env.KHAYA_API_KEY || process.env.KHAYA_API_KEY;
     if (!key) {
@@ -31,6 +33,27 @@ function localTts(): Plugin {
     res.statusCode = up.ok ? 200 : 502;
     res.setHeader('Content-Type', up.headers.get('Content-Type') ?? 'audio/wav');
     res.end(Buffer.from(await up.arrayBuffer()));
+  };
+  // Local stand-in for api/identify.ts (Gemini pack reading).
+  const identify = async (req: import('http').IncomingMessage, res: import('http').ServerResponse) => {
+    const env = loadEnv('development', process.cwd(), '');
+    const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!key) {
+      res.statusCode = 503;
+      return res.end('Set GEMINI_API_KEY in .env.local to use AI pack reading locally.');
+    }
+    const chunks: Buffer[] = [];
+    for await (const c of req) chunks.push(c as Buffer);
+    const { image } = JSON.parse(Buffer.concat(chunks).toString() || '{}');
+    if (process.env.HTTPS_PROXY) {
+      const { ProxyAgent, setGlobalDispatcher } = await import('undici');
+      setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
+    }
+    const { identifyWithGemini } = await import('./api/identify');
+    const out = await identifyWithGemini(image, key);
+    res.statusCode = out.status;
+    res.setHeader('Content-Type', out.headers.get('Content-Type') ?? 'application/json');
+    res.end(await out.text());
   };
   return {
     name: 'local-tts',
