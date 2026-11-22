@@ -16,7 +16,10 @@ const SYSTEM = `You read photos of medicine packaging for a medicine-safety app 
 Report ONLY what is printed and legible on the pack: brand name, active ingredients with strengths,
 dosage form and manufacturer. Never add ingredients, uses or advice that are not printed.
 If the photo is not a medicine pack, or nothing is legible, set is_medicine_pack to false.
-Use empty strings for anything you cannot read. Be honest about confidence.`;
+Use empty strings for anything you cannot read. Be honest about confidence.
+NEVER guess or complete a number, strength or word that is hidden, covered, cut off or blurred:
+if any digit of a strength is not clearly legible, leave that strength as an empty string.
+A wrong strength is far worse than a missing one.`;
 
 const SCHEMA = {
   type: 'object',
