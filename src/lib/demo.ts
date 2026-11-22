@@ -9,10 +9,10 @@ export function useStartDemo() {
     const d = DEMO_CASES.find((c) => c.id === id);
     if (!d) return;
     const s = useApp.getState();
-    s.setProfile(d.profile);
+    // Each demo patient is their own person, so a real profile on this phone is never overwritten.
+    s.openDemoPerson(d.id, d.profile);
     s.setConsent(true);
     s.setOnboarded(true);
-    s.setDemo(d.id);
     s.resetDraft();
     s.setDraft({ query: d.check.query });
     navigate('/app/check');

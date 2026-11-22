@@ -10,6 +10,7 @@ import { displayLevel } from '../engine/checks';
 import { firstName } from '../lib/demo';
 import { useApp } from '../store/useApp';
 import { LanguagePicker } from '../components/LanguagePicker';
+import { PersonSwitcher } from '../components/PersonSwitcher';
 import { useT } from '../i18n';
 
 const TIPS = [
@@ -72,6 +73,9 @@ export default function Home() {
               {name ? `, ${name}` : ''} <span className="inline-block origin-[70%_70%] animate-[wave_2.4s_ease-in-out_1]">👋</span>
             </h1>
             <p className="mt-1 text-[14px] text-muted">{t('Check a medicine before you take it.')}</p>
+            <div className="mt-3">
+              <PersonSwitcher />
+            </div>
           </Reveal>
 
           <Reveal i={2}>

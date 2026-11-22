@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PackScanner } from '../components/PackScanner';
 import { RxScanner } from '../components/RxScanner';
+import { PersonSwitcher } from '../components/PersonSwitcher';
 import { Note, Press, Reveal, StepHeader } from '../components/ui';
 import { INGREDIENTS, ingredientNames, medicineById } from '../data/medicines';
 import type { Medicine } from '../data/types';
@@ -92,6 +93,9 @@ export function CheckInput() {
           <div className="eyebrow">{t('Step 1 · Your medicine')}</div>
           <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Which medicine would you like to check?')}</h1>
           <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Type the name on the pack. A brand name or the medicine inside both work.')}</p>
+          <div className="mt-3">
+            <PersonSwitcher />
+          </div>
         </Reveal>
 
         <Reveal i={1} className="mt-5 grid grid-cols-4 gap-1.5 rounded-2xl bg-teal-100/60 p-1">

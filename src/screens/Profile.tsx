@@ -10,6 +10,7 @@ import type { AllergyGroup, Condition, G6pdStatus, Profile as P } from '../data/
 import { useMedicineSearch } from '../lib/useMedicineSearch';
 import { useApp } from '../store/useApp';
 import { LanguagePicker } from '../components/LanguagePicker';
+import { PersonSwitcher } from '../components/PersonSwitcher';
 import { useT } from '../i18n';
 
 const CONDITIONS: { id: Condition; label: string }[] = [
@@ -125,9 +126,10 @@ export default function Profile() {
 
 function ProfileForm({ setup }: { setup: boolean }) {
   const navigate = useNavigate();
-  const { profile, setProfile, resetAll, demoId, setDemo, clearHistory } = useApp();
-  // Building your own profile after trying a demo starts from a blank profile.
+  const { profile, setProfile, demoId, people, activeId, addPerson, removePerson } = useApp();
+  // A demo patient is never turned into a real profile: "build my own" adds a new person instead.
   const [p, setP] = useState<P>(() => (setup && demoId ? EMPTY_PROFILE : profile));
+  const others = people.filter((x) => x.id !== activeId);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saved, setSaved] = useState(false);
   const t = useT();
@@ -139,11 +141,6 @@ function ProfileForm({ setup }: { setup: boolean }) {
 
   const save = () => {
     setProfile({ ...p, trimester: p.pregnancy === 'pregnant' ? p.trimester : null });
-    // A profile built in setup is the person's own, not a demo patient.
-    if (setup && demoId) {
-      setDemo(null);
-      clearHistory();
-    }
     setSaved(true);
     if (setup) navigate('/app', { replace: true });
   };
@@ -157,6 +154,14 @@ function ProfileForm({ setup }: { setup: boolean }) {
               <div className="eyebrow">{t(setup ? 'Step 1 · About you' : 'Your profile')}</div>
               <LanguagePicker />
             </div>
+            {!setup && (
+              <div className="mt-3">
+                <PersonSwitcher />
+              </div>
+            )}
+            {setup && others.length > 0 && (
+              <p className="mt-2 text-[13px] font-semibold text-teal-700">{t('Adding a new person to this phone.')}</p>
+            )}
             <h1 className="mt-2 text-[28px] font-extrabold leading-tight tracking-tight text-navy-900">{t('Build your health profile')}</h1>
             <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Tell us a little about your health. Every check uses this. You can update it later.')}</p>
           </Reveal>
@@ -165,7 +170,13 @@ function ProfileForm({ setup }: { setup: boolean }) {
             <div className="mt-4">
               <Note title="Demo patient loaded">{t('This is a demo profile for presenting. Edit it freely or delete it below.')}</Note>
               {!setup && (
-                <Press onClick={() => navigate('/app/profile?setup=1')} className="btn-secondary mt-3">
+                <Press
+                  onClick={() => {
+                    addPerson();
+                    navigate('/app/profile?setup=1');
+                  }}
+                  className="btn-secondary mt-3"
+                >
                   {t('Leave the demo and build my own profile')}
                 </Press>
               )}
@@ -288,7 +299,18 @@ function ProfileForm({ setup }: { setup: boolean }) {
                 onClick={() => setConfirmDelete(true)}
                 className="flex w-full items-center justify-center gap-2 py-2 text-[13px] font-bold text-risk-high"
               >
-                <Trash2 size={15} /> {t('Delete my profile from this phone')}
+                <Trash2 size={15} /> {t(others.length ? 'Remove this person from this phone' : 'Delete my profile from this phone')}
+              </button>
+            )}
+            {setup && others.length > 0 && (
+              <button
+                onClick={() => {
+                  if (activeId) removePerson(activeId);
+                  navigate('/app', { replace: true });
+                }}
+                className="w-full py-2 text-[13px] font-bold text-muted"
+              >
+                {t('Cancel')}
               </button>
             )}
           </div>
@@ -304,8 +326,9 @@ function ProfileForm({ setup }: { setup: boolean }) {
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => {
           setConfirmDelete(false);
-          resetAll();
-          navigate('/app/welcome', { replace: true });
+          const last = others.length === 0;
+          if (activeId) removePerson(activeId);
+          navigate(last ? '/app/welcome' : '/app', { replace: true });
         }}
       />
     </>
