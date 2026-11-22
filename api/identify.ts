@@ -60,8 +60,9 @@ Report ONLY the medicine lines: for each medicine, the name exactly as written, 
 the form (tablet, syrup, injection...) and the directions (e.g. "1 tab twice daily for 5 days").
 PRIVACY: never return the patient's name, age, address, phone, hospital number, the doctor's name,
 signature, registration number or the clinic's details. Leave them out completely.
-Handwriting can be hard to read. For each medicine set "legible" to "clear" only if you can read the
-whole name with confidence; otherwise "unclear". NEVER guess or complete a medicine name, number or
+Handwriting can be hard to read. For each medicine set "legible" to "clear" if you can read every
+letter of the medicine name, even if the handwriting is messy; set "unclear" if you had to guess any
+letter of the name. NEVER guess or complete a medicine name, number or
 strength you cannot read: use an empty string, or mark the line "unclear". A wrong medicine name is
 dangerous; a missing one is safe because a pharmacist will check.
 If the photo is not a prescription, set is_prescription to false and return no medicines.`;

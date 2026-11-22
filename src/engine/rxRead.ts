@@ -86,3 +86,16 @@ export function matchRxLine(line: RxLine): Medicine | null {
   if (hits.length) return byStrength(hits.map((h) => h.medicine));
   return null;
 }
+
+/**
+ * For a line the AI was NOT sure about: only an EXACT medicine or brand name counts
+ * (no fuzzy matching, which could turn a misread into a real but wrong medicine).
+ * The app shows it unticked, for the user to compare with the paper.
+ */
+export function matchUnsureLine(line: RxLine): Medicine | null {
+  const name = line.name.trim();
+  if (name.length < 4) return null;
+  if (findIngredientId(name)) return matchRxLine({ ...line, legible: 'clear' });
+  const brand = MEDICINES.find((m) => m.brand.toLowerCase() === name.toLowerCase());
+  return brand ?? null;
+}

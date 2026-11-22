@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { matchRxLine, type RxLine } from './rxRead';
+import { matchRxLine, matchUnsureLine, type RxLine } from './rxRead';
 
 const line = (name: string, strength = '', legible: RxLine['legible'] = 'clear'): RxLine => ({ name, strength, form: '', directions: '', legible });
 
@@ -40,5 +40,17 @@ describe('prescription lines', () => {
 
   it('returns null for words that are not medicines', () => {
     expect(matchRxLine(line('Review in two weeks'))).toBeNull();
+  });
+});
+
+describe('lines the AI was not sure about', () => {
+  it('offers an exact medicine name for the user to confirm', () => {
+    expect(matchUnsureLine(line('Albendazole', '400mg', 'unclear'))?.ingredients).toEqual(['albendazole']);
+  });
+
+  it('never fuzzy-matches a misread into a real medicine', () => {
+    expect(matchUnsureLine(line('Opropoxyphene', '200mg', 'unclear'))).toBeNull();
+    expect(matchUnsureLine(line('Amoxicilin', '500mg', 'unclear'))).toBeNull(); // one letter off
+    expect(matchUnsureLine(line('Breezy', '', 'unclear'))).toBeNull();
   });
 });
