@@ -56,15 +56,17 @@ const PACK_TASK: ReadTask = {
 };
 
 const RX_SYSTEM = `You read photos of doctors' prescriptions for a medicine-safety app in Ghana.
-Report ONLY the medicine lines: for each medicine, the name exactly as written, the strength,
+Report ONLY the medicine lines: for each medicine, the name exactly as written, the strength (dose),
 the form (tablet, syrup, injection...) and the directions (e.g. "1 tab twice daily for 5 days").
 PRIVACY: never return the patient's name, age, address, phone, hospital number, the doctor's name,
 signature, registration number or the clinic's details. Leave them out completely.
-Handwriting can be hard to read. For each medicine set "legible" to "clear" if you can read every
-letter of the medicine name, even if the handwriting is messy; set "unclear" if you had to guess any
-letter of the name. NEVER guess or complete a medicine name, number or
-strength you cannot read: use an empty string, or mark the line "unclear". A wrong medicine name is
-dangerous; a missing one is safe because a pharmacist will check.
+Rate the medicine NAME and the DOSE separately, because doses are often much harder to read:
+- name_legibility: "clear" if you can read every letter of the name (even in messy handwriting);
+  "probably" if you are fairly sure but one or two letters are hard; "unreadable" if you are guessing.
+- dose_legibility: "clear" if every digit and unit of the strength is readable; "unsure" if any digit
+  or unit is hard to read; "none" if no strength is written.
+NEVER invent or complete a name, digit or unit you cannot see: write what you can read and rate it
+honestly. A pharmacist will check anything marked unsure.
 If the photo is not a prescription, set is_prescription to false and return no medicines.`;
 
 const RX_SCHEMA = {
@@ -80,9 +82,10 @@ const RX_SCHEMA = {
           strength: { type: 'string' },
           form: { type: 'string' },
           directions: { type: 'string' },
-          legible: { type: 'string', enum: ['clear', 'unclear'] },
+          name_legibility: { type: 'string', enum: ['clear', 'probably', 'unreadable'] },
+          dose_legibility: { type: 'string', enum: ['clear', 'unsure', 'none'] },
         },
-        required: ['name', 'strength', 'form', 'directions', 'legible'],
+        required: ['name', 'strength', 'form', 'directions', 'name_legibility', 'dose_legibility'],
       },
     },
     confidence: { type: 'string', enum: ['high', 'medium', 'low'] },

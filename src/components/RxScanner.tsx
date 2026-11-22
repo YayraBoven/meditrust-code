@@ -3,7 +3,7 @@ import { AlertTriangle, Camera, Check as CheckIcon, FileText, ImageUp, Loader2, 
 import { useRef, useState } from 'react';
 import { ingredientNames } from '../data/medicines';
 import type { Medicine } from '../data/types';
-import { aiReadPrescription, matchRxLine, matchUnsureLine, type RxLine } from '../engine/rxRead';
+import { aiReadPrescription, classifyLine, isExactRemote, matchLine, nameLevel, type RxLine, type RxStatus } from '../engine/rxRead';
 import { searchRxNorm } from '../engine/rxnorm';
 import { Press } from './ui';
 import { useT } from '../i18n';
@@ -13,10 +13,10 @@ type Stage = 'start' | 'reading' | 'results' | 'error';
 interface Row {
   line: RxLine;
   medicine: Medicine | null;
-  /** Why there is no medicine: unreadable, or not found anywhere. */
-  problem?: 'unclear' | 'not-found';
-  /** Matched, but the AI was not sure it read the line right: starts unticked. */
-  unsure?: boolean;
+  /** ok: ticked; unsure: real medicine but name barely readable (unticked); unreadable / not-found: ask the pharmacist. */
+  status: RxStatus;
+  /** The dose could not be read reliably: the check still runs, the dose goes to the pharmacist. */
+  doseUnsure: boolean;
   checked: boolean;
 }
 
@@ -52,21 +52,17 @@ export function RxScanner({ onDone, onType }: { onDone: (meds: Medicine[]) => vo
       }
       const out: Row[] = [];
       for (const line of facts.medicines) {
-        if (line.legible !== 'clear' || line.name.trim().length < 3) {
-          // Only an exact medicine name is offered, unticked, for the user to compare with the paper.
-          const maybe = matchUnsureLine(line);
-          out.push(maybe ? { line, medicine: maybe, unsure: true, checked: false } : { line, medicine: null, problem: 'unclear', checked: false });
-          continue;
-        }
-        let medicine = matchRxLine(line);
-        if (!medicine) {
+        let r = matchLine(line);
+        // Not in our own list: the wider database, but ONLY an exact name match counts.
+        if (!r.medicine && line.name.trim().length >= 4 && nameLevel(line) !== 'unreadable') {
           try {
-            [medicine] = await searchRxNorm(line.name, undefined, 1);
+            const [remote] = await searchRxNorm(line.name, undefined, 1);
+            if (remote && isExactRemote(remote, line.name)) r = classifyLine(line, remote);
           } catch {
-            medicine = null;
+            /* offline or busy: leave it for the pharmacist */
           }
         }
-        out.push(medicine ? { line, medicine, checked: true } : { line, medicine: null, problem: 'not-found', checked: false });
+        out.push({ line, medicine: r.medicine, status: r.status, doseUnsure: r.doseUnsure, checked: r.status === 'ok' });
       }
       setRows(out);
       setStage('results');
@@ -153,30 +149,35 @@ export function RxScanner({ onDone, onType }: { onDone: (meds: Medicine[]) => vo
                   <Press
                     key={k}
                     onClick={() => setRows((cur) => cur.map((x, j) => (j === k ? { ...x, checked: !x.checked } : x)))}
-                    className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors ${r.checked ? 'border-teal-600 bg-teal-50' : r.unsure ? 'border-[#E7C27A] bg-risk-mediumBg' : 'border-line bg-card'}`}
+                    className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition-colors ${r.checked ? 'border-teal-600 bg-teal-50' : r.status === 'unsure' ? 'border-[#E7C27A] bg-risk-mediumBg' : 'border-line bg-card'}`}
                   >
                     <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border-2 ${r.checked ? 'border-teal-600 bg-teal-600 text-white' : 'border-line'}`}>
                       {r.checked && <CheckIcon size={14} strokeWidth={3} />}
                     </span>
                     <span className="min-w-0 flex-1">
-                      {r.unsure && <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-wide text-risk-medium">{t('Not sure we read this right')}</span>}
+                      {r.status === 'unsure' && <span className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-wide text-risk-medium">{t('Not sure we read this right')}</span>}
                       <span className="block text-[15px] font-bold text-navy-900">{r.medicine.brand}</span>
                       <span className="block text-[12.5px] text-muted">
                         {ingredientNames(r.medicine).join(' + ')}
-                        {r.medicine.strength ? ` · ${r.medicine.strength}` : ''}
+                        {!r.doseUnsure && r.medicine.strength ? ` · ${r.medicine.strength}` : ''}
                       </span>
+                      {r.doseUnsure && (
+                        <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-risk-mediumBg px-2 py-1 text-[11.5px] font-bold text-risk-medium">
+                          <AlertTriangle size={12} /> {t('Dose: check with your pharmacist or doctor')}
+                        </span>
+                      )}
                       <span className="mt-1 block text-[12px] text-navy-700">
-                        {t('Written:')} “{[r.line.name, r.line.strength].filter(Boolean).join(' ')}”{r.line.directions ? ` · ${r.line.directions}` : ''}
+                        {t('Written:')} “{r.line.name}{r.line.strength ? ` ${r.line.strength}${r.doseUnsure ? '?' : ''}` : ''}”{r.line.directions ? ` · ${r.line.directions}` : ''}
                       </span>
-                      {r.unsure && <span className="mt-1 block text-[12px] font-semibold text-navy-900">{t('Tick it only if it matches the name on your prescription.')}</span>}
+                      {r.status === 'unsure' && <span className="mt-1 block text-[12px] font-semibold text-navy-900">{t('Tick it only if it matches the name on your prescription.')}</span>}
                     </span>
                   </Press>
                 ) : (
                   <div key={k} className="flex items-start gap-3 rounded-2xl border border-[#E7C27A] bg-risk-mediumBg p-3.5">
                     <AlertTriangle size={18} className="mt-0.5 shrink-0 text-risk-medium" />
                     <span className="text-[13px] leading-snug text-navy-900">
-                      <span className="block font-bold">{t(r.problem === 'unclear' ? 'We could not read this line reliably' : 'Not found in our medicine list')}</span>
-                      {r.line.name && <span className="block text-[12px] text-navy-700">{t(r.problem === 'unclear' ? 'It might say:' : 'Written:')} “{[r.line.name, r.line.strength].filter(Boolean).join(' ')}”</span>}
+                      <span className="block font-bold">{t(r.status === 'unreadable' ? 'We could not read this line reliably' : 'Not found in our medicine list')}</span>
+                      {r.line.name && <span className="block text-[12px] text-navy-700">{t(r.status === 'unreadable' ? 'It might say:' : 'Written:')} “{[r.line.name, r.line.strength].filter(Boolean).join(' ')}”</span>}
                       <span className="block text-[12px] text-navy-700">{t('Please ask the pharmacist about this medicine.')}</span>
                     </span>
                   </div>
