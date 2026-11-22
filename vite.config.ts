@@ -35,13 +35,14 @@ function localTts(): Plugin {
     res.setHeader('Content-Type', up.headers.get('Content-Type') ?? 'audio/wav');
     res.end(Buffer.from(await up.arrayBuffer()));
   };
-  // Local stand-in for api/identify.ts (Gemini pack reading).
+  // Local stand-in for api/identify.ts (AI pack reading: Qwen, then Gemini).
   const identify = async (req: import('http').IncomingMessage, res: import('http').ServerResponse) => {
     const env = loadEnv('development', process.cwd(), '');
-    const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!key) {
+    const { providers } = await import('./api/_providers');
+    const list = providers({ ...process.env, ...env });
+    if (!list.length) {
       res.statusCode = 503;
-      return res.end('Set GEMINI_API_KEY in .env.local to use AI pack reading locally.');
+      return res.end('Set QWEN_API_KEY or GEMINI_API_KEY in .env.local to use AI pack reading locally.');
     }
     const chunks: Buffer[] = [];
     for await (const c of req) chunks.push(c as Buffer);
@@ -50,8 +51,8 @@ function localTts(): Plugin {
       const { ProxyAgent, setGlobalDispatcher } = await import('undici');
       setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
     }
-    const { identifyWithGemini } = await import('./api/identify');
-    const out = await identifyWithGemini(image, key);
+    const { identifyPack } = await import('./api/identify');
+    const out = await identifyPack(image, list);
     res.statusCode = out.status;
     res.setHeader('Content-Type', out.headers.get('Content-Type') ?? 'application/json');
     res.end(await out.text());
@@ -59,10 +60,11 @@ function localTts(): Plugin {
   // Local stand-in for api/simplify.ts (AI summary of trusted text).
   const simplify = async (req: import('http').IncomingMessage, res: import('http').ServerResponse) => {
     const env = loadEnv('development', process.cwd(), '');
-    const key = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!key) {
+    const { providers } = await import('./api/_providers');
+    const list = providers({ ...process.env, ...env });
+    if (!list.length) {
       res.statusCode = 503;
-      return res.end('Set GEMINI_API_KEY in .env.local to use AI summaries locally.');
+      return res.end('Set QWEN_API_KEY or GEMINI_API_KEY in .env.local to use AI summaries locally.');
     }
     const chunks: Buffer[] = [];
     for await (const c of req) chunks.push(c as Buffer);
@@ -71,8 +73,8 @@ function localTts(): Plugin {
       const { ProxyAgent, setGlobalDispatcher } = await import('undici');
       setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
     }
-    const { simplifyWithGemini } = await import('./api/simplify');
-    const out = await simplifyWithGemini(text, key);
+    const { simplifyText } = await import('./api/simplify');
+    const out = await simplifyText(text, list);
     res.statusCode = out.status;
     res.setHeader('Content-Type', out.headers.get('Content-Type') ?? 'application/json');
     res.end(await out.text());

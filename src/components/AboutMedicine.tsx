@@ -94,7 +94,7 @@ export function AboutMedicine({ medicine }: { medicine: Medicine }) {
                     <Sparkles size={13} /> {t('In simple words · AI summary')}
                   </div>
                   <p className="mt-1.5 text-[13.5px] leading-relaxed text-navy-900">{ai.text}</p>
-                  <p className="mt-2 text-[11.5px] leading-relaxed text-navy-700">{t('Written by AI (Google Gemini) from the MedlinePlus text above only. It may contain mistakes, so check with a pharmacist.')}</p>
+                  <p className="mt-2 text-[11.5px] leading-relaxed text-navy-700">{t('Written by AI (Alibaba Qwen or Google Gemini) from the MedlinePlus text above only. It may contain mistakes, so check with a pharmacist.')}</p>
                 </motion.div>
               </AnimatePresence>
             )}

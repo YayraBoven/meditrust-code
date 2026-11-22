@@ -98,7 +98,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
     setPhoto(preview);
     setStage('reading');
     setProgress(0);
-    // 1. AI reading (Google Gemini) when online. Falls back to the on-device reader on any problem.
+    // 1. AI reading (Qwen, then Gemini) when online. Falls back to the on-device reader on any problem.
     if (navigator.onLine) {
       setReader('ai');
       let fake = 0.05;
@@ -191,7 +191,7 @@ export function PackScanner({ onPick, onType }: { onPick: (m: Medicine) => void;
               <motion.div className="absolute left-6 right-6 h-0.5 bg-teal-500 shadow-[0_0_16px_#14A594]" animate={{ top: ['22%', '78%', '22%'] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} />
               <ScanText size={36} className="relative opacity-90" />
               <div className="relative mt-3 text-[15px] font-bold">{t('Scan the medicine pack')}</div>
-              <div className="relative mt-1 max-w-[250px] text-[12.5px] text-white/70">{t('Point at the side with the medicine name. AI (Google Gemini) reads the photo only to find the medicine. Your name and health profile are never sent.')}</div>
+              <div className="relative mt-1 max-w-[250px] text-[12.5px] text-white/70">{t('Point at the side with the medicine name. AI (Alibaba Qwen, or Google Gemini as backup) reads the photo only to find the medicine. Your name and health profile are never sent.')}</div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Press onClick={canStream ? openCamera : () => captureRef.current?.click()} className="btn-primary">

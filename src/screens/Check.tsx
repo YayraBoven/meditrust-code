@@ -279,7 +279,7 @@ const SOURCE_NOTE: Record<NonNullable<Medicine['source']>, string> = {
   demo: 'This is an invented demo brand from MediTrust’s illustrative list, not a verified live database.',
   'ghana-list': 'This comes from MediTrust’s illustrative list of common medicines in Ghana. A pharmacist still needs to review it.',
   rxnorm: 'Identified using RxNorm (U.S. National Library of Medicine). Names and ingredients may differ from packs sold in Ghana, so check them against your pack.',
-  photo: 'Read from your photo by AI (Google Gemini). AI can misread, so check that the name and strength match your pack.',
+  photo: 'Read from your photo by AI (Alibaba Qwen or Google Gemini). AI can misread, so check that the name and strength match your pack.',
 };
 
 function PackArt({ m }: { m: Medicine }) {
@@ -299,7 +299,7 @@ function PackArt({ m }: { m: Medicine }) {
         <div className="mt-1 text-[12.5px] font-semibold text-navy-900">
           {[m.strength, m.form].filter(Boolean).join(' · ')}
         </div>
-        <div className="mt-4 text-[10.5px] text-muted">{m.source === 'rxnorm' ? 'RxNorm (NLM)' : m.source === 'photo' ? 'Google Gemini' : t('For prototype use only')}</div>
+        <div className="mt-4 text-[10.5px] text-muted">{m.source === 'rxnorm' ? 'RxNorm (NLM)' : m.source === 'photo' ? 'AI photo reading' : t('For prototype use only')}</div>
       </div>
       <motion.div
         className="absolute bottom-4 right-5 h-5 w-12 rounded-full bg-gradient-to-r from-teal-500 from-50% to-white to-50% shadow"

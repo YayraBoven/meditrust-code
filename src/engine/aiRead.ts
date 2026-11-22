@@ -5,7 +5,7 @@ import type { Crop } from './ocr';
 
 /**
  * AI pack reading: the photo is sent (through our own server function) to Google
- * Gemini, which reports only what is printed on the pack. MediTrust then matches
+ * Qwen or Gemini, which reports only what is printed on the pack. MediTrust then matches
  * that to its medicine list. The user still confirms, and the safety rules, not
  * the AI, decide any risk.
  */
