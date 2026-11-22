@@ -55,3 +55,18 @@ describe('AI providers: Qwen first, Gemini as backup', () => {
     expect((await res.json()).provider).toBe('gemini');
   });
 });
+
+describe('account problems', () => {
+  it('skips the rest of Qwen after "access denied", so scans stay fast', async () => {
+    const calls: string[] = [];
+    const res = await identifyPack(
+      IMG,
+      providers({ QWEN_API_KEY: 'q', GEMINI_API_KEY: 'g' }),
+      fakeFetch({ 'dashscope-intl.aliyuncs.com': () => Response.json({ error: { code: 'AccessDenied.Unpurchased' } }, { status: 403 }), 'generativelanguage.googleapis.com': () => reply(JSON.stringify(pack)) }, calls),
+    );
+    const out = await res.json();
+    expect(out.provider).toBe('gemini');
+    expect(calls.filter((h) => h.startsWith('dashscope')).length).toBe(1);
+    expect(out.tried[0].code).toBe('AccessDenied.Unpurchased');
+  });
+});

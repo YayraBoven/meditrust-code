@@ -29,7 +29,7 @@ export function providers(env: Env = process.env): Provider[] {
     {
       name: 'qwen',
       endpoint: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
-      vision: ['qwen3-vl-plus', 'qwen3-vl-flash', 'qwen-vl-max-latest', 'qwen-vl-plus-latest', 'qwen2.5-vl-72b-instruct', 'qwen-vl-ocr-latest'],
+      vision: ['qwen3-vl-plus', 'qwen-vl-max-latest', 'qwen-vl-plus-latest'],
       text: ['qwen-plus', 'qwen-flash', 'qwen-turbo'],
       jsonSchema: false,
       key: env.QWEN_API_KEY,
@@ -95,6 +95,12 @@ export async function chat(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** True when the last attempt shows an account problem (bad key, not activated): skip this provider's other models. */
+export function accountBlocked(attempts: Attempt[]): boolean {
+  const last = attempts[attempts.length - 1];
+  return !!last && (last.status === 401 || last.status === 403);
 }
 
 /** Pulls a JSON object out of a reply that may be wrapped in ``` fences or text. */

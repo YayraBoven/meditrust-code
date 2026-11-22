@@ -10,7 +10,7 @@
  */
 export const config = { runtime: 'edge' };
 
-import { chat, parseJson, providers, type Attempt, type Provider } from './_providers';
+import { accountBlocked, chat, parseJson, providers, type Attempt, type Provider } from './_providers';
 
 const SYSTEM = `You read photos of medicine packaging for a medicine-safety app in Ghana.
 Report ONLY what is printed and legible on the pack: brand name, active ingredients with strengths,
@@ -53,6 +53,7 @@ export async function identifyPack(image: string, list: Provider[], fetchImpl: t
       if (parsed && typeof parsed.is_medicine_pack === 'boolean' && Array.isArray(parsed.active_ingredients)) {
         return Response.json({ ...parsed, provider: p.name, model, tried: attempts });
       }
+      if (accountBlocked(attempts)) break; // not activated or bad key: go straight to the next provider
     }
   }
   console.log('identify: all providers failed', JSON.stringify(attempts));

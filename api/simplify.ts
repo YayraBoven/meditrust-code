@@ -7,7 +7,7 @@
  */
 export const config = { runtime: 'edge' };
 
-import { chat, providers, type Attempt, type Provider } from './_providers';
+import { accountBlocked, chat, providers, type Attempt, type Provider } from './_providers';
 
 const SYSTEM = `You rewrite trusted medicine information for people in Ghana with limited health knowledge.
 Rules:
@@ -35,6 +35,7 @@ export async function simplifyText(text: string, list: Provider[], fetchImpl: ty
         attempts,
       );
       if (out) return Response.json({ text: out, provider: p.name, model });
+      if (accountBlocked(attempts)) break; // not activated or bad key: go straight to the next provider
     }
   }
   console.log('simplify: all providers failed', JSON.stringify(attempts));
