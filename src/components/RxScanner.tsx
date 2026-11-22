@@ -103,7 +103,7 @@ export function RxScanner({ onDone, onType }: { onDone: (meds: Medicine[]) => vo
                 <Camera size={17} /> {t('Take photo')}
               </Press>
               <Press onClick={() => fileRef.current?.click()} className="btn-secondary !py-3 text-[14px]">
-                <ImageUp size={17} /> {t('Upload photo')}
+                <ImageUp size={17} /> {t('Upload')}
               </Press>
             </div>
             <div className="mt-4 flex gap-2 rounded-2xl bg-canvas p-3 text-[12px] leading-relaxed text-navy-700">

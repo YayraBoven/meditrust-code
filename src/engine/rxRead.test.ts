@@ -15,6 +15,24 @@ describe('prescription lines', () => {
     expect(m?.strength).toMatch(/500/);
   });
 
+  it('never turns a single medicine into a combination product', () => {
+    for (const n of ['Paracetamol', 'Amoxicillin', 'Ibuprofen', 'Metronidazole', 'Omeprazole']) {
+      const m = matchRxLine(line(n));
+      expect(m?.ingredients.length, n).toBe(1);
+    }
+  });
+
+  it('keeps the strength written when we have no product of that strength', () => {
+    const m = matchRxLine(line('Paracetamol', '1g'));
+    expect(m?.ingredients).toEqual(['paracetamol']);
+    expect(m?.strength).toBe('1g');
+  });
+
+  it('picks tablets rather than syrup unless syrup is written', () => {
+    expect(matchRxLine(line('Ibuprofen'))?.form).not.toMatch(/syrup/i);
+    expect(matchRxLine({ ...line('Ibuprofen', '100mg/5ml'), form: 'syrup' })?.strength).toMatch(/5 ?ml/);
+  });
+
   it('never matches an unclear or too-short line', () => {
     expect(matchRxLine(line('Amoxicillin', '500mg', 'unclear'))).toBeNull();
     expect(matchRxLine(line('Am'))).toBeNull();

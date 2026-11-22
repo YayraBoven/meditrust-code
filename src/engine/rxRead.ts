@@ -1,4 +1,4 @@
-import { findIngredientId } from '../data/medicines';
+import { MEDICINES, findIngredientId } from '../data/medicines';
 import type { Medicine } from '../data/types';
 import { medicinesFromFacts, toJpeg } from './aiRead';
 import { CONFIDENT, searchMedicines } from './match';
@@ -46,19 +46,30 @@ const num = (s: string) => s.match(/\d+(\.\d+)?/)?.[0];
 
 /**
  * Matches one written line to a medicine, or null when it cannot be matched safely.
- * 1. Our own list (brand or generic name), preferring the same strength.
- * 2. A known ingredient name: the medicine as written on the prescription.
- * 3. Otherwise the caller may search the wider database (RxNorm).
+ * 1. A medicine (ingredient) name: a plain product with ONLY that ingredient and the
+ *    same strength and form; otherwise the medicine exactly as written. Never a
+ *    combination product, never a different strength.
+ * 2. A brand name from our own list.
+ * 3. A known ingredient we have no product for: the medicine as written.
+ * 4. Otherwise null: the caller may search the wider database (RxNorm).
  */
 export function matchRxLine(line: RxLine): Medicine | null {
   if (line.legible !== 'clear' || line.name.trim().length < 3) return null;
-  const hits = searchMedicines(line.name, 6).filter((h) => h.score >= CONFIDENT);
-  if (hits.length) {
-    const want = num(line.strength);
-    const sameStrength = want ? hits.find((h) => num(h.medicine.strength) === want) : undefined;
-    return (sameStrength ?? hits[0]).medicine;
-  }
-  if (findIngredientId(line.name)) {
+  const want = num(line.strength);
+  const byStrength = (list: Medicine[]) => (want ? list.find((m) => num(m.strength) === want) : undefined) ?? list[0];
+
+  const ingredient = findIngredientId(line.name);
+  if (ingredient) {
+    const single = MEDICINES.filter((m) => m.ingredients.length === 1 && m.ingredients[0] === ingredient);
+    const liquid = (m: Medicine) => /syrup|susp|ml/i.test(`${m.form} ${m.strength}`);
+    const wantsLiquid = /syrup|susp|ml/i.test(`${line.form} ${line.strength}`);
+    const sameForm = single.filter((m) => liquid(m) === wantsLiquid);
+    // Same strength as written: use that product.
+    const exact = want ? sameForm.find((m) => num(m.strength) === want) : undefined;
+    if (exact) return exact;
+    // No strength written: the usual product of that form.
+    if (!want && sameForm.length) return sameForm[0];
+    // Otherwise the medicine exactly as written, never a different strength.
     const [m] = medicinesFromFacts({
       is_medicine_pack: true,
       brand_name: '',
@@ -68,7 +79,10 @@ export function matchRxLine(line: RxLine): Medicine | null {
       text_seen: '',
       confidence: 'medium',
     });
-    return m ?? null;
+    return m ? { ...m, id: m.id.replace(/^photo-/, 'rx-'), source: 'photo' } : null;
   }
+
+  const hits = searchMedicines(line.name, 6).filter((h) => h.score >= CONFIDENT && h.medicine.brand.toLowerCase().includes(line.name.trim().toLowerCase().split(/\s+/)[0]));
+  if (hits.length) return byStrength(hits.map((h) => h.medicine));
   return null;
 }
