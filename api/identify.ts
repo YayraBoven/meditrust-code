@@ -51,12 +51,12 @@ export async function identifyPack(image: string, list: Provider[], fetchImpl: t
       const content = await chat(p, model, body, fetchImpl, attempts);
       const parsed = content ? parseJson(content) : null;
       if (parsed && typeof parsed.is_medicine_pack === 'boolean' && Array.isArray(parsed.active_ingredients)) {
-        return Response.json({ ...parsed, provider: p.name, model });
+        return Response.json({ ...parsed, provider: p.name, model, tried: attempts });
       }
     }
   }
   console.log('identify: all providers failed', JSON.stringify(attempts));
-  return new Response('The AI reader is busy. Please try again.', { status: 503 });
+  return Response.json({ error: 'The AI reader is busy. Please try again.', tried: attempts }, { status: 503 });
 }
 
 export default async function handler(req: Request): Promise<Response> {

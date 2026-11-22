@@ -53,6 +53,8 @@ export interface Attempt {
   provider: string;
   model: string;
   status: number | 'timeout' | 'error';
+  /** Short error code from the provider (never the key), to diagnose setup problems. */
+  code?: string;
 }
 
 /** Calls one chat completion; returns the message text or null (busy, over quota, bad reply). */
@@ -73,8 +75,18 @@ export async function chat(
       body: JSON.stringify({ model, ...body }),
       signal: ctrl.signal,
     });
+    if (!res.ok) {
+      let code = '';
+      try {
+        const err = (await res.json()) as { error?: { code?: string; type?: string }; code?: string };
+        code = String(err?.error?.code ?? err?.code ?? err?.error?.type ?? '').slice(0, 60);
+      } catch {
+        /* not JSON */
+      }
+      attempts.push({ provider: p.name, model, status: res.status, code });
+      return null;
+    }
     attempts.push({ provider: p.name, model, status: res.status });
-    if (!res.ok) return null;
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     return data?.choices?.[0]?.message?.content?.trim() || null;
   } catch (e) {
