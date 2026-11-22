@@ -57,16 +57,24 @@ describe('AI providers: Qwen first, Gemini as backup', () => {
 });
 
 describe('account problems', () => {
-  it('skips the rest of Qwen after "access denied", so scans stay fast', async () => {
+  it('skips the rest of Qwen when the key itself is refused', async () => {
     const calls: string[] = [];
     const res = await identifyPack(
       IMG,
       providers({ QWEN_API_KEY: 'q', GEMINI_API_KEY: 'g' }),
-      fakeFetch({ 'dashscope-intl.aliyuncs.com': () => Response.json({ error: { code: 'AccessDenied.Unpurchased' } }, { status: 403 }), 'generativelanguage.googleapis.com': () => reply(JSON.stringify(pack)) }, calls),
+      fakeFetch({ 'dashscope-intl.aliyuncs.com': () => Response.json({ error: { code: 'InvalidApiKey' } }, { status: 401 }), 'generativelanguage.googleapis.com': () => reply(JSON.stringify(pack)) }, calls),
     );
     const out = await res.json();
     expect(out.provider).toBe('gemini');
     expect(calls.filter((h) => h.startsWith('dashscope')).length).toBe(1);
-    expect(out.tried[0].code).toBe('AccessDenied.Unpurchased');
+    expect(out.tried[0].code).toBe('InvalidApiKey');
+  });
+
+  it('tries the next Qwen model when one model is not included in the plan', async () => {
+    let n = 0;
+    const f = (async () => (++n === 1 ? Response.json({ error: { code: 'AccessDenied.Unpurchased' } }, { status: 403 }) : reply(JSON.stringify(pack)))) as unknown as typeof fetch;
+    const out = await (await identifyPack(IMG, providers({ QWEN_API_KEY: 'q' }), f)).json();
+    expect(out.provider).toBe('qwen');
+    expect(out.tried.length).toBe(2);
   });
 });

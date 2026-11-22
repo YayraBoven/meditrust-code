@@ -29,7 +29,7 @@ export function providers(env: Env = process.env): Provider[] {
     {
       name: 'qwen',
       endpoint: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
-      vision: ['qwen3-vl-plus', 'qwen-vl-max-latest', 'qwen-vl-plus-latest'],
+      vision: ['qwen3.7-plus', 'qwen3.8-27b', 'qwen4-max', 'qwen3-vl-plus'],
       text: ['qwen-plus', 'qwen-flash', 'qwen-turbo'],
       jsonSchema: false,
       key: env.QWEN_API_KEY,
@@ -97,10 +97,16 @@ export async function chat(
   }
 }
 
-/** True when the last attempt shows an account problem (bad key, not activated): skip this provider's other models. */
+/**
+ * True when the last attempt shows a problem with the whole account (bad key), so the
+ * provider's other models will fail too. "Unpurchased" or "free tier used up" apply to
+ * one model only, so the next model is still tried.
+ */
 export function accountBlocked(attempts: Attempt[]): boolean {
   const last = attempts[attempts.length - 1];
-  return !!last && (last.status === 401 || last.status === 403);
+  if (!last) return false;
+  if (last.status === 401) return true;
+  return last.status === 403 && !/Unpurchased|FreeTierOnly|Quota/i.test(last.code ?? '');
 }
 
 /** Pulls a JSON object out of a reply that may be wrapped in ``` fences or text. */
