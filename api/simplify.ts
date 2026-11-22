@@ -7,7 +7,7 @@
  */
 export const config = { runtime: 'edge' };
 
-import { accountBlocked, chat, providers, type Attempt, type Provider } from './_providers';
+import { accountBlocked, chat, makeBudget, providers, type Attempt, type Provider } from './_providers';
 
 const SYSTEM = `You rewrite trusted medicine information for people in Ghana with limited health knowledge.
 Rules:
@@ -19,8 +19,11 @@ Rules:
 /** Rewrites trusted text with each configured provider in turn (Qwen first, then Gemini). */
 export async function simplifyText(text: string, list: Provider[], fetchImpl: typeof fetch = fetch): Promise<Response> {
   const attempts: Attempt[] = [];
-  for (const p of list) {
+  const budget = makeBudget();
+  for (const [i, p] of list.entries()) {
     for (const model of p.text) {
+      const wait = budget(p, list.slice(i + 1));
+      if (!wait) break; // out of time for this provider: move on
       const out = await chat(
         p,
         model,
@@ -33,6 +36,7 @@ export async function simplifyText(text: string, list: Provider[], fetchImpl: ty
         },
         fetchImpl,
         attempts,
+        wait,
       );
       if (out) return Response.json({ text: out, provider: p.name, model });
       if (accountBlocked(attempts)) break; // not activated or bad key: go straight to the next provider

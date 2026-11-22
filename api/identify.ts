@@ -10,7 +10,7 @@
  */
 export const config = { runtime: 'edge' };
 
-import { accountBlocked, chat, parseJson, providers, type Attempt, type Provider } from './_providers';
+import { accountBlocked, chat, makeBudget, parseJson, providers, type Attempt, type Provider } from './_providers';
 
 const SYSTEM = `You read photos of medicine packaging for a medicine-safety app in Ghana.
 Report ONLY what is printed and legible on the pack: brand name, active ingredients with strengths,
@@ -38,8 +38,11 @@ const SCHEMA = {
 /** Reads a pack photo with each configured provider in turn (Qwen first, then Gemini). */
 export async function identifyPack(image: string, list: Provider[], fetchImpl: typeof fetch = fetch): Promise<Response> {
   const attempts: Attempt[] = [];
-  for (const p of list) {
+  const budget = makeBudget();
+  for (const [i, p] of list.entries()) {
     for (const model of p.vision) {
+      const wait = budget(p, list.slice(i + 1));
+      if (!wait) break; // out of time for this provider: move on
       const body: Record<string, unknown> = {
         temperature: 0,
         messages: [
@@ -48,7 +51,7 @@ export async function identifyPack(image: string, list: Provider[], fetchImpl: t
         ],
         response_format: p.jsonSchema ? { type: 'json_schema', json_schema: { name: 'pack', schema: SCHEMA } } : { type: 'json_object' },
       };
-      const content = await chat(p, model, body, fetchImpl, attempts);
+      const content = await chat(p, model, body, fetchImpl, attempts, wait);
       const parsed = content ? parseJson(content) : null;
       if (parsed && typeof parsed.is_medicine_pack === 'boolean' && Array.isArray(parsed.active_ingredients)) {
         return Response.json({ ...parsed, provider: p.name, model, tried: attempts });

@@ -19,6 +19,10 @@ export interface Provider {
   text: string[];
   /** Whether the provider accepts response_format json_schema (else json_object + schema in the prompt). */
   jsonSchema: boolean;
+  /** Extra request fields for this provider (e.g. turning off slow "thinking" mode). */
+  extra?: Record<string, unknown>;
+  /** Longest wait for one model before trying the next. */
+  timeoutMs: number;
   key: string | undefined;
 }
 
@@ -29,9 +33,12 @@ export function providers(env: Env = process.env): Provider[] {
     {
       name: 'qwen',
       endpoint: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
-      vision: ['qwen3.7-plus', 'qwen3.8-27b', 'qwen4-max', 'qwen3-vl-plus'],
+      // qwen3-vl-plus is the vision model; qwen3.7-plus also reads images and has its own free quota.
+      vision: ['qwen3-vl-plus', 'qwen3.7-plus'],
       text: ['qwen-plus', 'qwen-flash', 'qwen-turbo'],
       jsonSchema: false,
+      extra: { enable_thinking: false },
+      timeoutMs: 10000,
       key: env.QWEN_API_KEY,
     },
     {
@@ -40,6 +47,7 @@ export function providers(env: Env = process.env): Provider[] {
       vision: ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'],
       text: ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-flash-latest'],
       jsonSchema: true,
+      timeoutMs: 12000,
       key: env.GEMINI_API_KEY,
     },
   ];
@@ -72,7 +80,7 @@ export async function chat(
     const res = await fetchImpl(p.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
-      body: JSON.stringify({ model, ...body }),
+      body: JSON.stringify({ model, ...body, ...(p.extra ?? {}) }),
       signal: ctrl.signal,
     });
     if (!res.ok) {
@@ -107,6 +115,21 @@ export function accountBlocked(attempts: Attempt[]): boolean {
   if (!last) return false;
   if (last.status === 401) return true;
   return last.status === 403 && !/Unpurchased|FreeTierOnly|Quota/i.test(last.code ?? '');
+}
+
+/**
+ * Time budget for one request, so every provider gets a turn before the hosting
+ * time limit (about 25 s). Returns how long the next attempt may take, or 0 to skip it.
+ */
+export function makeBudget(totalMs = 22000, now: () => number = Date.now) {
+  const start = now();
+  return (p: Provider, laterProviders: Provider[]): number => {
+    const left = totalMs - (now() - start);
+    // Keep enough time for the next provider's first try.
+    const reserve = laterProviders.length ? Math.min(laterProviders[0].timeoutMs, 9000) : 0;
+    const allowed = Math.min(p.timeoutMs, left - reserve);
+    return allowed >= 3000 ? allowed : 0;
+  };
 }
 
 /** Pulls a JSON object out of a reply that may be wrapped in ``` fences or text. */
