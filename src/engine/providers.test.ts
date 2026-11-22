@@ -103,3 +103,23 @@ describe('speed and time limits', () => {
     expect(budget(list[1], [])).toBe(9000); // Gemini gets the rest
   });
 });
+
+describe('prescription privacy', () => {
+  it('removes a patient name-and-age line even if the AI lists it as a medicine', async () => {
+    const { readPrescription, looksLikePerson } = await import('../../api/identify');
+    expect(looksLikePerson({ name: 'Sushil 62' })).toBe(true);
+    expect(looksLikePerson({ name: 'Ama Mensah 28y' })).toBe(true);
+    expect(looksLikePerson({ name: 'Mrs A. Owusu 45' })).toBe(true);
+    expect(looksLikePerson({ name: 'Pilex', directions: 'tds 5d' })).toBe(false);
+    expect(looksLikePerson({ name: 'Vitamin B12' })).toBe(false); // a number joined to a word is not an age
+    expect(looksLikePerson({ name: 'Vitamin B12', strength: '1000mcg' })).toBe(false);
+    const rx = { is_prescription: true, confidence: 'high', medicines: [
+      { name: 'Sushil 62', strength: '', form: '', directions: '', name_legibility: 'clear', dose_legibility: 'none' },
+      { name: 'Pilex', strength: '', form: 'tab', directions: 'tds 5d', name_legibility: 'clear', dose_legibility: 'none' },
+    ] };
+    const res = await readPrescription(IMG, providers({ QWEN_API_KEY: 'q' }), fakeFetch({ 'dashscope-intl.aliyuncs.com': () => reply(JSON.stringify(rx)) }, []));
+    const out = await res.json();
+    expect(out.medicines.map((m: { name: string }) => m.name)).toEqual(['Pilex']);
+    expect(JSON.stringify(out)).not.toContain('Sushil');
+  });
+});

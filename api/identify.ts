@@ -134,8 +134,26 @@ export async function readImage(image: string, list: Provider[], task: ReadTask,
 /** Reads a medicine pack photo. */
 export const identifyPack = (image: string, list: Provider[], fetchImpl: typeof fetch = fetch) => readImage(image, list, PACK_TASK, fetchImpl);
 
+/**
+ * A line that is really the patient (a name and an age, e.g. "Susila 62", "Ama Mensah 28y"):
+ * words plus a bare number, with no dose unit, form or directions. Removed on the server
+ * so it never reaches the phone, whatever the AI returned.
+ */
+export function looksLikePerson(m: { name?: string; strength?: string; form?: string; directions?: string }): boolean {
+  const name = (m.name ?? '').trim();
+  const rest = `${m.strength ?? ''}${m.form ?? ''}${m.directions ?? ''}`.trim();
+  if (rest) return false;
+  return /^(mr|mrs|ms|miss|master|pt)?\.?\s*[a-z][a-z.'-]*(\s+[a-z][a-z.'-]*){0,3}(\s+|\s*,\s*)\d{1,3}\s*(y|yr|yrs|years?|m|mo|months?)?\.?$/i.test(name);
+}
+
 /** Reads the medicine lines of a prescription photo (no personal details). */
-export const readPrescription = (image: string, list: Provider[], fetchImpl: typeof fetch = fetch) => readImage(image, list, RX_TASK, fetchImpl);
+export async function readPrescription(image: string, list: Provider[], fetchImpl: typeof fetch = fetch): Promise<Response> {
+  const res = await readImage(image, list, RX_TASK, fetchImpl);
+  if (!res.ok) return res;
+  const data = (await res.json()) as { medicines?: { name?: string }[] };
+  const medicines = (data.medicines ?? []).filter((m) => !looksLikePerson(m));
+  return Response.json({ ...data, medicines });
+}
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
