@@ -29,8 +29,8 @@ export function providers(env: Env = process.env): Provider[] {
     {
       name: 'qwen',
       endpoint: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
-      vision: ['qwen3-vl-plus', 'qwen-vl-max', 'qwen-vl-plus'],
-      text: ['qwen-plus', 'qwen-turbo'],
+      vision: ['qwen3-vl-plus', 'qwen3-vl-flash', 'qwen-vl-max-latest', 'qwen-vl-plus-latest', 'qwen2.5-vl-72b-instruct', 'qwen-vl-ocr-latest'],
+      text: ['qwen-plus', 'qwen-flash', 'qwen-turbo'],
       jsonSchema: false,
       key: env.QWEN_API_KEY,
     },
