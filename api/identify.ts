@@ -60,6 +60,10 @@ Report ONLY the medicine lines: for each medicine, the name exactly as written, 
 the form (tablet, syrup, injection...) and the directions (e.g. "1 tab twice daily for 5 days").
 PRIVACY: never return the patient's name, age, address, phone, hospital number, the doctor's name,
 signature, registration number or the clinic's details. Leave them out completely.
+The patient's name and age are usually written near the top, often underlined, before the medicines
+(e.g. "Kofi 45", "Ama Mensah 28y", "Mrs A. Owusu"). A name followed by a number is a PERSON, never a
+medicine: do not list it. A date is not a medicine either. Only list lines that are clearly medicines
+(they usually have a dose, a form such as tab/syp/caps, or directions such as bd/tds/od).
 Rate the medicine NAME and the DOSE separately, because doses are often much harder to read:
 - name_legibility: "clear" if you can read every letter of the name (even in messy handwriting);
   "probably" if you are fairly sure but one or two letters are hard; "unreadable" if you are guessing.
