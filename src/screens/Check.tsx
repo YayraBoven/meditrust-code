@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Camera, Check as CheckIcon, ChevronRight, Database, Globe, Keyboard, Mic, Pill, Plus, Search, Stethoscope, WifiOff, X } from 'lucide-react';
+import { Camera, Check as CheckIcon, FileText, ChevronRight, Database, Globe, Keyboard, Mic, Pill, Plus, Search, Stethoscope, WifiOff, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PackScanner } from '../components/PackScanner';
+import { RxScanner } from '../components/RxScanner';
 import { Note, Press, Reveal, StepHeader } from '../components/ui';
 import { INGREDIENTS, ingredientNames, medicineById } from '../data/medicines';
 import type { Medicine } from '../data/types';
@@ -36,7 +37,7 @@ export function CheckInput() {
   const navigate = useNavigate();
   const { draft, setDraft, addExternal } = useApp();
   const [q, setQ] = useState(draft.query);
-  const [mode, setMode] = useState<'type' | 'photo' | 'voice'>('type');
+  const [mode, setMode] = useState<'type' | 'photo' | 'rx' | 'voice'>('type');
   const [listening, setListening] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { local: results, remote, state: remoteState } = useMedicineSearch(q);
@@ -93,15 +94,16 @@ export function CheckInput() {
           <p className="mt-2 text-[14px] leading-relaxed text-muted">{t('Type the name on the pack. A brand name or the medicine inside both work.')}</p>
         </Reveal>
 
-        <Reveal i={1} className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-teal-100/60 p-1">
+        <Reveal i={1} className="mt-5 grid grid-cols-4 gap-1.5 rounded-2xl bg-teal-100/60 p-1">
           {(
             [
               ['type', 'Type', Keyboard],
               ['photo', 'Scan pack', Camera],
+              ['rx', 'Prescription', FileText],
               ['voice', 'Speak', Mic],
             ] as const
           ).map(([id, label, Icon]) => (
-            <button key={id} onClick={() => setMode(id)} className="relative flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[13px] font-bold">
+            <button key={id} onClick={() => setMode(id)} className="relative flex flex-col items-center justify-center gap-1 rounded-xl py-2 text-[11.5px] font-bold leading-tight">
               {mode === id && <motion.span layoutId="mode-pill" className="absolute inset-0 rounded-xl bg-card shadow-card" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
               <Icon size={15} className={`relative ${mode === id ? 'text-teal-700' : 'text-muted'}`} />
               <span className={`relative ${mode === id ? 'text-navy-900' : 'text-muted'}`}>{t(label)}</span>
@@ -229,6 +231,20 @@ export function CheckInput() {
           {mode === 'photo' && (
             <motion.div key="photo" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
               <PackScanner onPick={(m) => (m.source === 'rxnorm' ? pickRemote(m) : pick(m.id))} onType={() => setMode('type')} />
+            </motion.div>
+          )}
+
+          {mode === 'rx' && (
+            <motion.div key="rx" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+              <RxScanner
+                onType={() => setMode('type')}
+                onDone={(meds) => {
+                  meds.filter((m) => m.source === 'photo' || m.source === 'rxnorm').forEach(addExternal);
+                  // A prescription is by definition prescribed: the next screen asks whether the doctor knew.
+                  setDraft({ medicineIds: [...new Set([...draft.medicineIds, ...meds.map((m) => m.id)])], prescribed: true, prescriberKnew: null, pendingId: null });
+                  navigate('/app/check/prescribed');
+                }}
+              />
             </motion.div>
           )}
 

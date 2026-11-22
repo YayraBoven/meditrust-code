@@ -4,7 +4,7 @@ import { scoreText } from './match';
 import type { Crop } from './ocr';
 
 /**
- * AI pack reading: the photo is sent (through our own server function) to Google
+ * AI pack reading: the photo is sent (through our own server function) to Alibaba
  * Qwen or Gemini, which reports only what is printed on the pack. MediTrust then matches
  * that to its medicine list. The user still confirms, and the safety rules, not
  * the AI, decide any risk.
@@ -22,7 +22,7 @@ export interface PackFacts {
 }
 
 /** Downscale (and crop) to a JPEG data URL: small enough to send quickly, sharp enough to read. */
-async function toJpeg(source: Blob | HTMLCanvasElement, crop?: Crop): Promise<string> {
+export async function toJpeg(source: Blob | HTMLCanvasElement, crop?: Crop): Promise<string> {
   let img: CanvasImageSource;
   let w: number;
   let h: number;
